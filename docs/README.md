@@ -102,3 +102,20 @@ scout curar --root . --jurisdiccion pjn --numero 12345 --anio 2024
 Actualiza `manifest.json` con `categoria`, `relevancia`, `motivo_relevancia` y `metodo_clasificacion="regla"`. Además copia los documentos relevantes a `selected/` y deja lo ambiguo como `requiere_revision`.
 
 Alcance deliberado: no hay GPT, no hay análisis jurídico, no hay informe final y no hay PJN real.
+
+## Paso 6 — Contrato de análisis y validador de referencias
+
+El Paso 6 agrega un contrato JSON para la futura skill de análisis y un validador anti-alucinación. Todavía no llama a GPT: valida un archivo JSON simulado contra los IDs existentes en `manifest.json`.
+
+Ejemplo:
+
+```bash
+scout validar-analisis \
+  --root . \
+  --jurisdiccion pjn \
+  --numero 12345 \
+  --anio 2024 \
+  --analisis-json analisis-simulado.json
+```
+
+El resultado se guarda en `reports/analisis-validado.json`. Todo hallazgo sin fuentes o con fuentes inexistentes se descarta automáticamente.

@@ -1,0 +1,5 @@
+Manifest: /home/adso/proyectos/expediente-scout/data/expedientes/pjn/12345-2024/manifest.json
+Análisis: /home/adso/proyectos/expediente-scout/analisis-simulado-paso6.json
+Hallazgos válidos: 2
+Hallazgos descartados: 2
+Salida: /home/adso/proyectos/expediente-scout/data/expedientes/pjn/12345-2024/reports/analisis-validado.json

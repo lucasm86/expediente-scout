@@ -1,0 +1,38 @@
+{
+  "hallazgos": [
+    {
+      "tipo": "etapa",
+      "afirmacion": "Hay una actuación inicial identificada.",
+      "fuentes": [
+        "act-0001"
+      ],
+      "confianza": "alta"
+    },
+    {
+      "tipo": "riesgo_probatorio",
+      "afirmacion": "Existe una pieza documental relevante.",
+      "fuentes": [
+        "doc-fcca71ed"
+      ],
+      "confianza": "media"
+    },
+    {
+      "tipo": "plazo",
+      "afirmacion": "Este hallazgo cita algo inexistente.",
+      "fuentes": [
+        "doc-no-existe"
+      ],
+      "confianza": "baja"
+    },
+    {
+      "tipo": "carga_actora",
+      "afirmacion": "Este hallazgo no trae fuentes.",
+      "fuentes": [],
+      "confianza": "media"
+    }
+  ],
+  "no_determinable": [
+    "No se determina fuero real en datos mock."
+  ],
+  "requiere_revision": true
+}
