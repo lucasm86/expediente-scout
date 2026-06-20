@@ -13,3 +13,13 @@ analisis-simulado-paso*.json
 *.env
 !*.env.example
 *.pyc
+
+# --- PJN local secrets / artifacts ---
+.env.pjn.capture
+.env.*
+!.env.example
+!.env.*.example
+pjn_capture_v2_bundle.zip
+scripts/*.bak.py
+data/expedientes/**/raw/
+data/expedientes/**/downloads/
