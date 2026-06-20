@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "expediente-scout"
+version = "0.1.0"
+description = "Núcleo determinístico para ingesta y trazabilidad de expedientes judiciales."
+readme = "docs/README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2",
+  "typer>=0.12",
+  "pymupdf>=1.23",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+]
+
+[tool.setuptools.packages.find]
+include = ["expediente_scout*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
