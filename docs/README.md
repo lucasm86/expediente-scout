@@ -90,3 +90,15 @@ scout curar --root . --jurisdiccion pjn --numero 12345 --anio 2024
 Actualiza `manifest.json` con `categoria`, `relevancia`, `motivo_relevancia` y `metodo_clasificacion="regla"`. Además copia los documentos relevantes a `selected/` y deja lo ambiguo como `requiere_revision`.
 
 Alcance deliberado: no hay GPT, no hay análisis jurídico, no hay informe final y no hay PJN real.
+
+## Paso 5 — Curaduría por reglas
+
+El Paso 5 agrega clasificación conservadora por reglas. El comando:
+
+```bash
+scout curar --root . --jurisdiccion pjn --numero 12345 --anio 2024
+```
+
+Actualiza `manifest.json` con `categoria`, `relevancia`, `motivo_relevancia` y `metodo_clasificacion="regla"`. Además copia los documentos relevantes a `selected/` y deja lo ambiguo como `requiere_revision`.
+
+Alcance deliberado: no hay GPT, no hay análisis jurídico, no hay informe final y no hay PJN real.
