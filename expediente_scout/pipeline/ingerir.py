@@ -68,6 +68,32 @@ def _crear_documento_desde_item(item: ItemIndice, doc_id: str, hash_sha256: str,
     )
 
 
+def _doc_id_para_item(
+    item: ItemIndice,
+    act_id: str,
+    hash_sha256: str,
+    documentos_por_id: dict[str, Documento],
+) -> str:
+    """Devuelve un ID estable; conserva duplicados exactos como documentos separados."""
+    base_id = crear_id_documento(hash_sha256)
+    existente = documentos_por_id.get(base_id)
+    if existente is None:
+        return base_id
+    if existente.nombre_archivo == item.archivo and existente.actuacion_id == act_id:
+        return base_id
+
+    candidato = f"{base_id}-act-{item.orden:04d}"
+    existente_candidato = documentos_por_id.get(candidato)
+    if existente_candidato is None:
+        return candidato
+    if existente_candidato.nombre_archivo == item.archivo and existente_candidato.actuacion_id == act_id:
+        return candidato
+
+    # Caso extremo: misma actuación con más de un archivo idéntico. Estable por nombre.
+    stem_seguro = Path(item.archivo).stem.replace(" ", "_")[:32]
+    return f"{base_id}-{stem_seguro}"
+
+
 def ingerir_captura(
     root: Path,
     jurisdiccion: str,
@@ -99,8 +125,8 @@ def ingerir_captura(
             raise FileNotFoundError(f"PDF no encontrado en captura: {origen}")
 
         hash_sha256 = calcular_sha256(origen)
-        doc_id = crear_id_documento(hash_sha256)
         act_id = crear_id_actuacion(item.orden)
+        doc_id = _doc_id_para_item(item, act_id, hash_sha256, documentos_por_id)
         destino = raw_dir / item.archivo
 
         if _copiar_si_cambio(origen, destino, hash_sha256):

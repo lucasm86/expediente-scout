@@ -49,3 +49,15 @@ scout estado --root . --jurisdiccion pjn --numero 12345 --anio 2024
 ```
 
 La reingesta es idempotente: si se ingiere dos veces la misma captura mock, no se duplican actuaciones ni documentos.
+
+
+## Paso 3
+
+Se agrega normalización documental local:
+
+```bash
+scout ingerir --root . --jurisdiccion pjn --numero 12345 --anio 2024
+scout normalizar --root . --jurisdiccion pjn --numero 12345 --anio 2024
+```
+
+La normalización cuenta páginas con PyMuPDF, extrae texto a `text/<doc_id>.txt`, actualiza `manifest.json` y marca duplicados exactos por `sha256` con `categoria=duplicado`, `relevancia=duplicado` y `duplicado_de`.

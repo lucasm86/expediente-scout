@@ -1,7 +1,4 @@
-"""CLI de expediente-scout.
-
-Paso 2: comandos locales mínimos para operar sobre capturas mock.
-"""
+"""CLI de expediente-scout."""
 
 from __future__ import annotations
 
@@ -10,6 +7,7 @@ from typing import Annotated
 
 import typer
 
+from expediente_scout.domain.enums import Relevancia
 from expediente_scout.domain.manifest import cargar_manifest
 from expediente_scout.ingesta.mock_captura import MockCaptura
 from expediente_scout.pipeline.ingerir import (
@@ -17,6 +15,7 @@ from expediente_scout.pipeline.ingerir import (
     ingerir_captura,
     listar_expedientes,
 )
+from expediente_scout.pipeline.normalizar import normalizar_expediente
 
 app = typer.Typer(
     name="scout",
@@ -35,11 +34,11 @@ def ingerir_cmd(
     numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
     anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
     root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
-    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 2 solo existe: mock.")] = "mock",
+    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 3 solo existe: mock.")] = "mock",
 ) -> None:
     """Ingiere una captura local y actualiza el manifest sin duplicar."""
     if fuente != "mock":
-        raise typer.BadParameter("En Paso 2 solo está implementada la fuente 'mock'.")
+        raise typer.BadParameter("En Paso 3 solo está implementada la fuente 'mock'.")
 
     manifest_path = ingerir_captura(
         root=root,
@@ -53,6 +52,29 @@ def ingerir_cmd(
     typer.echo(f"Expediente: {manifest.expediente.id}")
     typer.echo(f"Actuaciones: {len(manifest.actuaciones)}")
     typer.echo(f"Documentos: {len(manifest.documentos)}")
+
+
+@app.command("normalizar")
+def normalizar_cmd(
+    jurisdiccion: Annotated[str, typer.Option(help="Jurisdicción, por ejemplo: pjn.")] = "pjn",
+    numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
+    anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
+    root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
+) -> None:
+    """Extrae texto, cuenta páginas y marca duplicados exactos por hash."""
+    try:
+        manifest_path = normalizar_expediente(root=root, jurisdiccion=jurisdiccion, numero=numero, anio=anio)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    manifest = cargar_manifest(manifest_path)
+    normalizados = sum(1 for doc in manifest.documentos if doc.ruta_text and doc.paginas is not None)
+    duplicados = sum(1 for doc in manifest.documentos if doc.relevancia == Relevancia.DUPLICADO)
+    typer.echo(f"Manifest: {manifest_path}")
+    typer.echo(f"Expediente: {manifest.expediente.id}")
+    typer.echo(f"Documentos normalizados: {normalizados}")
+    typer.echo(f"Duplicados: {duplicados}")
 
 
 @app.command("listar")
