@@ -11,6 +11,7 @@ from expediente_scout.domain.enums import Relevancia
 from expediente_scout.domain.manifest import cargar_manifest
 from expediente_scout.ingesta.mock_captura import MockCaptura
 from expediente_scout.pipeline.curar import curar_expediente
+from expediente_scout.pipeline.capturar import capturar_desde_script
 from expediente_scout.pipeline.ingerir import (
     estado_expediente,
     ingerir_captura,
@@ -201,6 +202,44 @@ def reportar_cmd(
     typer.echo(f"Secciones: {resultado.secciones}")
     typer.echo(f"Hallazgos incluidos: {resultado.hallazgos_incluidos}")
 
+
+
+@app.command("capturar")
+def capturar_cmd(
+    script_path: Annotated[Path, typer.Option("--script-path", help="Script externo de captura PJN.")],
+    jurisdiccion: Annotated[str, typer.Option(help="Jurisdicción, por ejemplo: pjn.")] = "pjn",
+    numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
+    anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
+    root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
+    env_path: Annotated[Path | None, typer.Option("--env-path", help="Archivo .env con credenciales, permisos 600.")] = None,
+    output_dir: Annotated[Path | None, typer.Option("--output-dir", help="Carpeta de salida para el script externo.")] = None,
+    timeout: Annotated[int, typer.Option("--timeout", help="Timeout en segundos para el script externo.")] = 300,
+) -> None:
+    """Ejecuta un script externo de captura y reconcilia su salida con manifest.json."""
+    try:
+        resultado = capturar_desde_script(
+            root=root,
+            jurisdiccion=jurisdiccion,
+            numero=numero,
+            anio=anio,
+            script_path=script_path,
+            env_path=env_path,
+            output_dir=output_dir,
+            timeout=timeout,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Captura: ok")
+    typer.echo(f"Manifest: {resultado.manifest_path}")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Raw: {resultado.raw_dir}")
+    typer.echo(f"Log: {resultado.log_path}")
+    typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
+    typer.echo(f"Documentos: {resultado.total_documentos}")
+    typer.echo(f"Actuaciones nuevas: {resultado.actuaciones_nuevas}")
+    typer.echo(f"Documentos nuevos: {resultado.documentos_nuevos}")
 
 @app.command("listar")
 def listar_cmd(

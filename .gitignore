@@ -9,3 +9,6 @@ paso1-tree.txt
 paso*.log
 paso*-tree.txt
 analisis-simulado-paso*.json
+.env
+*.env
+!*.env.example

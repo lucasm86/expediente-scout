@@ -152,3 +152,25 @@ Comando:
 ```bash
 scout reportar --root . --jurisdiccion pjn --numero 12345 --anio 2024
 ```
+
+## Paso 8 — Captura real por script externo
+
+El comando `scout capturar` integra un script externo determinístico. El contrato técnico del script es:
+
+```bash
+script --jurisdiccion pjn --numero 12345 --anio 2024 --output /ruta/salida
+```
+
+La salida debe contener:
+
+- `raw/` con PDFs descargados; y
+- `indice.json` o `indice.csv` con columnas/campos `orden`, `fecha`, `descripcion`, `archivo`.
+
+Ejemplo:
+
+```bash
+chmod 600 .env
+scout capturar --script-path /ruta/captura_pjn.py --env-path .env --jurisdiccion pjn --numero 12345 --anio 2024
+```
+
+No se guardan secretos ni stdout/stderr del script externo en logs. El `.env` real debe tener permisos `600` y está excluido del repositorio.
