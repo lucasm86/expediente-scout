@@ -225,3 +225,23 @@ scout entregar --root . --jurisdiccion pjn --numero 12345 --anio 2024 --destino 
 ```
 
 La entrega no envía WhatsApp real. Genera un JSON auditable en `logs/entregas/` para que un adaptador externo lo tome y lo remita.
+
+
+## Paso 11 — Dashboard web estático de solo lectura
+
+Este paso agrega un dashboard HTML estático generado desde los `manifest.json` locales.
+No lee credenciales, no muestra contenido de PDFs y no modifica expedientes.
+
+Comando:
+
+```bash
+scout dashboard --root . --output data/dashboard/index.html
+```
+
+Salida esperada:
+
+```text
+Dashboard: data/dashboard/index.html
+Expedientes: <n>
+Solo lectura: sí
+```

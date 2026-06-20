@@ -11,6 +11,7 @@ from expediente_scout.domain.enums import Relevancia
 from expediente_scout.domain.manifest import cargar_manifest
 from expediente_scout.ingesta.mock_captura import MockCaptura
 from expediente_scout.pipeline.curar import curar_expediente
+from expediente_scout.pipeline.dashboard import generar_dashboard
 from expediente_scout.pipeline.capturar import capturar_desde_script
 from expediente_scout.pipeline.ingerir import (
     estado_expediente,
@@ -240,6 +241,18 @@ def capturar_cmd(
     typer.echo(f"Documentos: {resultado.total_documentos}")
     typer.echo(f"Actuaciones nuevas: {resultado.actuaciones_nuevas}")
     typer.echo(f"Documentos nuevos: {resultado.documentos_nuevos}")
+
+@app.command("dashboard")
+def dashboard_cmd(
+    root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
+    output: Annotated[Path | None, typer.Option("--output", help="Ruta de salida del dashboard HTML.")] = None,
+) -> None:
+    """Genera un dashboard HTML estático de solo lectura."""
+    resultado = generar_dashboard(root=root, output=output)
+    typer.echo(f"Dashboard: {resultado.output_path}")
+    typer.echo(f"Expedientes: {resultado.expedientes}")
+    typer.echo("Solo lectura: sí")
+
 
 @app.command("listar")
 def listar_cmd(
