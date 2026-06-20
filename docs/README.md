@@ -36,3 +36,16 @@ pip install -e ".[dev]"
 ```bash
 pytest
 ```
+
+
+## Paso 2
+
+Se agrega una CLI mínima con Typer:
+
+```bash
+scout ingerir --root . --jurisdiccion pjn --numero 12345 --anio 2024
+scout listar --root .
+scout estado --root . --jurisdiccion pjn --numero 12345 --anio 2024
+```
+
+La reingesta es idempotente: si se ingiere dos veces la misma captura mock, no se duplican actuaciones ni documentos.

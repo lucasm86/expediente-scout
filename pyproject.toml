@@ -25,3 +25,6 @@ include = ["expediente_scout*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[project.scripts]
+scout = "expediente_scout.cli:app"
