@@ -196,3 +196,18 @@ scout capturar --script-path /ruta/captura_pjn.py --env-path .env --jurisdiccion
 ```
 
 No se guardan secretos ni stdout/stderr del script externo en logs. El `.env` real debe tener permisos `600` y está excluido del repositorio.
+
+
+## Paso 9 — Configuración OpenClaw
+
+Este paso agrega archivos de configuración para OpenClaw y un router determinístico de comandos WhatsApp hacia `scout`.
+
+Comandos soportados:
+
+- `Expediente: listar`
+- `Expediente: estado pjn 12345/2024`
+- `Expediente: capturar pjn 12345/2024`
+- `Expediente: novedades pjn 12345/2024`
+- `Expediente: informe pjn 12345/2024`
+
+La skill GPT queda definida como contrato de salida JSON con fuentes obligatorias. No se integra OAuth ni se ejecuta GPT real en este paso: OpenClaw deberá usar `openclaw/prompts/analisis_gpt.md` y luego validar la salida con `scout validar-analisis`.
