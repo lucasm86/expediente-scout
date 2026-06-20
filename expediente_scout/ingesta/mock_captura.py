@@ -1,4 +1,4 @@
-"""Fuente mock determinística para desarrollar sin PJN."""
+"""Fuente mock determinística con dos estados para probar novedades."""
 
 from __future__ import annotations
 
@@ -12,9 +12,16 @@ from .fuente_captura import ItemIndice
 
 
 class MockCaptura:
+    """Captura mock determinística.
+
+    Estados:
+    - base: 5 actuaciones iniciales.
+    - ampliado: base + 2 actuaciones nuevas.
+    """
+
     fuente_id = "mock"
 
-    _items = (
+    _items_base = (
         (1, date(2024, 3, 10), "Presenta demanda", "demanda.pdf", 3),
         (2, date(2024, 4, 5), "Contesta demanda", "contestacion.pdf", 2),
         (3, date(2024, 4, 10), "Provee traslado", "proveido_traslado.pdf", 1),
@@ -22,7 +29,15 @@ class MockCaptura:
         (5, date(2024, 6, 15), "Resolución interlocutoria", "interlocutoria.pdf", 2),
     )
 
-    def __init__(self, base_dir: Path | None = None) -> None:
+    _items_nuevos = (
+        (6, date(2024, 7, 1), "Provee intimación", "proveido_intimacion.pdf", 1),
+        (7, date(2024, 8, 12), "Acompaña documental complementaria", "documental_complementaria.pdf", 2),
+    )
+
+    def __init__(self, base_dir: Path | None = None, estado: str = "base") -> None:
+        if estado not in {"base", "ampliado"}:
+            raise ValueError("estado debe ser 'base' o 'ampliado'")
+        self.estado = estado
         self._tempdir: TemporaryDirectory[str] | None = None
         if base_dir is None:
             self._tempdir = TemporaryDirectory(prefix="expediente_scout_mock_")
@@ -33,19 +48,26 @@ class MockCaptura:
         self._raw_dir.mkdir(parents=True, exist_ok=True)
         self._generar_pdfs()
 
+    @property
+    def items(self) -> tuple[tuple[int, date, str, str, int], ...]:
+        """Devuelve los ítems correspondientes al estado del mock."""
+        if self.estado == "base":
+            return self._items_base
+        return self._items_base + self._items_nuevos
+
     def ruta_raw(self) -> Path:
         """Devuelve la carpeta raw del mock."""
         return self._raw_dir
 
     def leer_indice(self) -> list[ItemIndice]:
-        """Devuelve cinco actuaciones determinísticas."""
+        """Devuelve actuaciones determinísticas según estado."""
         return [
             ItemIndice(orden=orden, fecha=fecha, descripcion=descripcion, archivo=archivo)
-            for orden, fecha, descripcion, archivo, _paginas in self._items
+            for orden, fecha, descripcion, archivo, _paginas in self.items
         ]
 
     def _generar_pdfs(self) -> None:
-        for orden, fecha, descripcion, archivo, paginas in self._items:
+        for orden, fecha, descripcion, archivo, paginas in self.items:
             self._crear_pdf(self._raw_dir / archivo, orden, fecha, descripcion, archivo, paginas)
 
     @staticmethod
@@ -67,7 +89,7 @@ class MockCaptura:
             "title": archivo,
             "author": "expediente-scout",
             "subject": "mock deterministico",
-            "keywords": "expediente-scout,paso1,mock",
+            "keywords": "expediente-scout,paso4,mock",
             "creator": "expediente-scout",
             "producer": "expediente-scout",
             "creationDate": "D:20240101000000-03'00'",

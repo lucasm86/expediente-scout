@@ -61,3 +61,20 @@ scout normalizar --root . --jurisdiccion pjn --numero 12345 --anio 2024
 ```
 
 La normalización cuenta páginas con PyMuPDF, extrae texto a `text/<doc_id>.txt`, actualiza `manifest.json` y marca duplicados exactos por `sha256` con `categoria=duplicado`, `relevancia=duplicado` y `duplicado_de`.
+
+## Paso 4 — Novedades
+
+El mock ahora expone dos estados:
+
+- `base`: cinco actuaciones iniciales.
+- `ampliado`: las cinco iniciales más dos actuaciones nuevas.
+
+Comandos útiles:
+
+```bash
+scout novedades --root . --jurisdiccion pjn --numero 12345 --anio 2024 --mock-estado ampliado
+scout ingerir --root . --jurisdiccion pjn --numero 12345 --anio 2024 --mock-estado ampliado
+```
+
+La reingesta agrega solo actuaciones/documentos nuevos y no duplica lo ya existente.
+

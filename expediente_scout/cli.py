@@ -16,6 +16,7 @@ from expediente_scout.pipeline.ingerir import (
     listar_expedientes,
 )
 from expediente_scout.pipeline.normalizar import normalizar_expediente
+from expediente_scout.pipeline.novedades import detectar_novedades_captura
 
 app = typer.Typer(
     name="scout",
@@ -24,8 +25,19 @@ app = typer.Typer(
 )
 
 
-def _crear_fuente_mock() -> MockCaptura:
-    return MockCaptura()
+def _crear_fuente_mock(mock_estado: str) -> MockCaptura:
+    return MockCaptura(estado=mock_estado)
+
+
+def _manifest_path(root: Path, jurisdiccion: str, numero: str, anio: int) -> Path:
+    return Path(root) / "data" / "expedientes" / jurisdiccion / f"{numero}-{anio}" / "manifest.json"
+
+
+def _validar_fuente_mock(fuente: str, mock_estado: str) -> None:
+    if fuente != "mock":
+        raise typer.BadParameter("En Paso 4 solo está implementada la fuente 'mock'.")
+    if mock_estado not in {"base", "ampliado"}:
+        raise typer.BadParameter("--mock-estado debe ser 'base' o 'ampliado'.")
 
 
 @app.command("ingerir")
@@ -34,24 +46,61 @@ def ingerir_cmd(
     numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
     anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
     root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
-    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 3 solo existe: mock.")] = "mock",
+    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 4 solo existe: mock.")] = "mock",
+    mock_estado: Annotated[str, typer.Option("--mock-estado", help="Estado del mock: base o ampliado.")] = "base",
 ) -> None:
     """Ingiere una captura local y actualiza el manifest sin duplicar."""
-    if fuente != "mock":
-        raise typer.BadParameter("En Paso 3 solo está implementada la fuente 'mock'.")
+    _validar_fuente_mock(fuente, mock_estado)
+
+    path_antes = _manifest_path(root, jurisdiccion, numero, anio)
+    manifest_antes = cargar_manifest(path_antes) if path_antes.exists() else None
+    actuaciones_antes = len(manifest_antes.actuaciones) if manifest_antes else 0
+    documentos_antes = len(manifest_antes.documentos) if manifest_antes else 0
 
     manifest_path = ingerir_captura(
         root=root,
         jurisdiccion=jurisdiccion,
         numero=numero,
         anio=anio,
-        fuente=_crear_fuente_mock(),
+        fuente=_crear_fuente_mock(mock_estado),
     )
     manifest = cargar_manifest(manifest_path)
+    actuaciones_nuevas = len(manifest.actuaciones) - actuaciones_antes
+    documentos_nuevos = len(manifest.documentos) - documentos_antes
+
     typer.echo(f"Manifest: {manifest_path}")
     typer.echo(f"Expediente: {manifest.expediente.id}")
     typer.echo(f"Actuaciones: {len(manifest.actuaciones)}")
     typer.echo(f"Documentos: {len(manifest.documentos)}")
+    typer.echo(f"Actuaciones nuevas: {actuaciones_nuevas}")
+    typer.echo(f"Documentos nuevos: {documentos_nuevos}")
+
+
+@app.command("novedades")
+def novedades_cmd(
+    jurisdiccion: Annotated[str, typer.Option(help="Jurisdicción, por ejemplo: pjn.")] = "pjn",
+    numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
+    anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
+    root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
+    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 4 solo existe: mock.")] = "mock",
+    mock_estado: Annotated[str, typer.Option("--mock-estado", help="Estado del mock: base o ampliado.")] = "ampliado",
+) -> None:
+    """Detecta novedades de una captura contra el manifest local sin ingerirlas."""
+    _validar_fuente_mock(fuente, mock_estado)
+    resumen = detectar_novedades_captura(
+        root=root,
+        jurisdiccion=jurisdiccion,
+        numero=numero,
+        anio=anio,
+        fuente=_crear_fuente_mock(mock_estado),
+    )
+
+    typer.echo(f"Manifest existente: {'sí' if resumen.manifest_existe else 'no'}")
+    typer.echo(f"Actuaciones nuevas: {resumen.total_actuaciones_nuevas}")
+    typer.echo(f"Documentos nuevos: {resumen.total_documentos_nuevos}")
+    for item in resumen.actuaciones_nuevas:
+        fecha = item.fecha or "sin fecha"
+        typer.echo(f"- {item.actuacion_id} | {fecha} | {item.descripcion} | {item.archivo}")
 
 
 @app.command("normalizar")
