@@ -78,3 +78,15 @@ scout ingerir --root . --jurisdiccion pjn --numero 12345 --anio 2024 --mock-esta
 
 La reingesta agrega solo actuaciones/documentos nuevos y no duplica lo ya existente.
 
+
+## Paso 5 — Curaduría por reglas
+
+El Paso 5 agrega clasificación conservadora por reglas. El comando:
+
+```bash
+scout curar --root . --jurisdiccion pjn --numero 12345 --anio 2024
+```
+
+Actualiza `manifest.json` con `categoria`, `relevancia`, `motivo_relevancia` y `metodo_clasificacion="regla"`. Además copia los documentos relevantes a `selected/` y deja lo ambiguo como `requiere_revision`.
+
+Alcance deliberado: no hay GPT, no hay análisis jurídico, no hay informe final y no hay PJN real.

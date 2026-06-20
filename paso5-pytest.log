@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.5, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/adso/proyectos/expediente-scout
+configfile: pyproject.toml
+testpaths: tests
+collected 23 items
+
+tests/test_paso1.py .....                                                [ 21%]
+tests/test_paso2.py ....                                                 [ 39%]
+tests/test_paso3.py ....                                                 [ 56%]
+tests/test_paso4.py .....                                                [ 78%]
+tests/test_paso5.py .....                                                [100%]
+
+============================== 23 passed in 1.38s ==============================

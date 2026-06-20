@@ -10,6 +10,7 @@ import typer
 from expediente_scout.domain.enums import Relevancia
 from expediente_scout.domain.manifest import cargar_manifest
 from expediente_scout.ingesta.mock_captura import MockCaptura
+from expediente_scout.pipeline.curar import curar_expediente
 from expediente_scout.pipeline.ingerir import (
     estado_expediente,
     ingerir_captura,
@@ -35,7 +36,7 @@ def _manifest_path(root: Path, jurisdiccion: str, numero: str, anio: int) -> Pat
 
 def _validar_fuente_mock(fuente: str, mock_estado: str) -> None:
     if fuente != "mock":
-        raise typer.BadParameter("En Paso 4 solo está implementada la fuente 'mock'.")
+        raise typer.BadParameter("En Paso 5 solo está implementada la fuente 'mock'.")
     if mock_estado not in {"base", "ampliado"}:
         raise typer.BadParameter("--mock-estado debe ser 'base' o 'ampliado'.")
 
@@ -46,7 +47,7 @@ def ingerir_cmd(
     numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
     anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
     root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
-    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 4 solo existe: mock.")] = "mock",
+    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 5 solo existe: mock.")] = "mock",
     mock_estado: Annotated[str, typer.Option("--mock-estado", help="Estado del mock: base o ampliado.")] = "base",
 ) -> None:
     """Ingiere una captura local y actualiza el manifest sin duplicar."""
@@ -82,7 +83,7 @@ def novedades_cmd(
     numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
     anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
     root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
-    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 4 solo existe: mock.")] = "mock",
+    fuente: Annotated[str, typer.Option(help="Fuente de captura. En Paso 5 solo existe: mock.")] = "mock",
     mock_estado: Annotated[str, typer.Option("--mock-estado", help="Estado del mock: base o ampliado.")] = "ampliado",
 ) -> None:
     """Detecta novedades de una captura contra el manifest local sin ingerirlas."""
@@ -124,6 +125,30 @@ def normalizar_cmd(
     typer.echo(f"Expediente: {manifest.expediente.id}")
     typer.echo(f"Documentos normalizados: {normalizados}")
     typer.echo(f"Duplicados: {duplicados}")
+
+
+@app.command("curar")
+def curar_cmd(
+    jurisdiccion: Annotated[str, typer.Option(help="Jurisdicción, por ejemplo: pjn.")] = "pjn",
+    numero: Annotated[str, typer.Option(help="Número del expediente.")] = "12345",
+    anio: Annotated[int, typer.Option("--anio", help="Año del expediente.")] = 2024,
+    root: Annotated[Path, typer.Option(help="Raíz local del proyecto/datos.")] = Path("."),
+) -> None:
+    """Clasifica por reglas y copia documentos relevantes a selected/."""
+    try:
+        resultado = curar_expediente(root=root, jurisdiccion=jurisdiccion, numero=numero, anio=anio)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Manifest: {resultado.manifest_path}")
+    typer.echo(f"Documentos curados: {resultado.documentos_curados}")
+    typer.echo(f"Seleccionados: {resultado.seleccionados}")
+    typer.echo(f"Alta: {resultado.alta}")
+    typer.echo(f"Media: {resultado.media}")
+    typer.echo(f"Baja: {resultado.baja}")
+    typer.echo(f"Requiere revisión: {resultado.requiere_revision}")
+    typer.echo(f"Duplicados: {resultado.duplicados}")
 
 
 @app.command("listar")
