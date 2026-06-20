@@ -12,3 +12,4 @@ analisis-simulado-paso*.json
 .env
 *.env
 !*.env.example
+*.pyc

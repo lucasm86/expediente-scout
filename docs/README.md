@@ -211,3 +211,17 @@ Comandos soportados:
 - `Expediente: informe pjn 12345/2024`
 
 La skill GPT queda definida como contrato de salida JSON con fuentes obligatorias. No se integra OAuth ni se ejecuta GPT real en este paso: OpenClaw deberá usar `openclaw/prompts/analisis_gpt.md` y luego validar la salida con `scout validar-analisis`.
+
+
+## Paso 10 — Entrega, PDF y lock anti-concurrencia
+
+El Paso 10 agrega exportación de `reports/informe.md` a `reports/informe.pdf`, preparación de entrega para adaptador WhatsApp/OpenClaw, partición de mensajes largos y lock por expediente.
+
+Comandos:
+
+```bash
+scout exportar-pdf --root . --jurisdiccion pjn --numero 12345 --anio 2024
+scout entregar --root . --jurisdiccion pjn --numero 12345 --anio 2024 --destino whatsapp://preview
+```
+
+La entrega no envía WhatsApp real. Genera un JSON auditable en `logs/entregas/` para que un adaptador externo lo tome y lo remita.

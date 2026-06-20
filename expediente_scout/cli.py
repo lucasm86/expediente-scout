@@ -284,3 +284,39 @@ def estado_cmd(
 
 if __name__ == "__main__":
     app()
+
+
+# --- Paso 10: entrega y PDF ---
+
+@app.command("exportar-pdf")
+def exportar_pdf(
+    root: Path = typer.Option(Path("."), "--root"),
+    jurisdiccion: str = typer.Option(..., "--jurisdiccion"),
+    numero: str = typer.Option(..., "--numero"),
+    anio: int = typer.Option(..., "--anio"),
+) -> None:
+    from expediente_scout.pipeline.entregar import exportar_pdf_informe
+
+    pdf = exportar_pdf_informe(root, jurisdiccion, numero, anio)
+    typer.echo(f"PDF: {pdf}")
+
+
+@app.command("entregar")
+def entregar(
+    root: Path = typer.Option(Path("."), "--root"),
+    jurisdiccion: str = typer.Option(..., "--jurisdiccion"),
+    numero: str = typer.Option(..., "--numero"),
+    anio: int = typer.Option(..., "--anio"),
+    destino: str = typer.Option("whatsapp://preview", "--destino"),
+    limite_mensaje: int = typer.Option(1200, "--limite-mensaje"),
+) -> None:
+    from expediente_scout.pipeline.entregar import lock_expediente, preparar_entrega
+
+    with lock_expediente(root, jurisdiccion, numero, anio):
+        entrega = preparar_entrega(root, jurisdiccion, numero, anio, destino, limite_mensaje)
+    typer.echo("Entrega preparada: sí")
+    typer.echo("Enviado: no")
+    typer.echo(f"Destino: {entrega.destino}")
+    typer.echo(f"Chunks: {entrega.chunks}")
+    typer.echo(f"PDF: {entrega.ruta_pdf}")
+    typer.echo(f"Log: {entrega.ruta_json}")
