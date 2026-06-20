@@ -6,3 +6,6 @@ __pycache__/
 data/
 paso1-pytest.log
 paso1-tree.txt
+paso*.log
+paso*-tree.txt
+analisis-simulado-paso*.json

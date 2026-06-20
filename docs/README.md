@@ -136,3 +136,19 @@ scout validar-analisis \
 ```
 
 El resultado se guarda en `reports/analisis-validado.json`. Todo hallazgo sin fuentes o con fuentes inexistentes se descarta automáticamente.
+
+## Paso 7 — Informe Markdown
+
+Agrega `scout reportar`, que genera `reports/informe.md` con 14 secciones a partir de `manifest.json` y `reports/analisis-validado.json`.
+
+Alcance:
+- No llama a GPT.
+- No integra PJN real.
+- No exporta PDF todavía.
+- Solo usa hallazgos previamente validados contra IDs internos existentes.
+
+Comando:
+
+```bash
+scout reportar --root . --jurisdiccion pjn --numero 12345 --anio 2024
+```
