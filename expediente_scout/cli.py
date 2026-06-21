@@ -13,6 +13,7 @@ from expediente_scout.ingesta.mock_captura import MockCaptura
 from expediente_scout.pipeline.curar import curar_expediente
 from expediente_scout.pipeline.dashboard import generar_dashboard
 from expediente_scout.pipeline.capturar import capturar_desde_script
+from expediente_scout.pipeline.clasificar_playbook import clasificar_indice_playbook
 from expediente_scout.pipeline.ingerir import (
     estado_expediente,
     ingerir_captura,
@@ -241,6 +242,33 @@ def capturar_cmd(
     typer.echo(f"Documentos: {resultado.total_documentos}")
     typer.echo(f"Actuaciones nuevas: {resultado.actuaciones_nuevas}")
     typer.echo(f"Documentos nuevos: {resultado.documentos_nuevos}")
+
+
+@app.command("clasificar-playbook")
+def clasificar_playbook_cmd(
+    indice: Annotated[Path, typer.Option("--indice", help="Ruta al indice.json generado por el capturador PJN.")],
+    output: Annotated[Path, typer.Option("--output", help="Ruta de salida para clasificacion_playbook.json.")],
+    playbook: Annotated[str, typer.Option("--playbook", help="ID del playbook procesal a usar.")] = "ordinario_v1",
+) -> None:
+    """Clasifica actuaciones de un índice PJN usando un playbook procesal."""
+    try:
+        resultado = clasificar_indice_playbook(
+            indice_path=indice,
+            playbook_id=playbook,
+            output_path=output,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Clasificación playbook: ok")
+    typer.echo(f"Playbook: {resultado.playbook_id}")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Salida: {resultado.output_path}")
+    typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
+    typer.echo(f"Con hito: {resultado.total_con_hito}")
+    typer.echo(f"Leer completo: {resultado.total_leer_completo}")
+
 
 @app.command("dashboard")
 def dashboard_cmd(
