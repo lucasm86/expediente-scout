@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2",
   "typer>=0.12",
   "pymupdf>=1.23",
+  "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
