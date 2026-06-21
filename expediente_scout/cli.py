@@ -27,6 +27,7 @@ from expediente_scout.pipeline.resolver_plan_lectura import generar_plan_lectura
 from expediente_scout.pipeline.extraer_texto_seleccionado import generar_extraccion_texto
 from expediente_scout.pipeline.generar_paquete_analisis import generar_paquete_analisis
 from expediente_scout.pipeline.preanalisis import ejecutar_preanalisis
+from expediente_scout.pipeline.generar_estado_actual import generar_estado_actual
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -423,6 +424,33 @@ def preanalisis_cmd(
     typer.echo(f"Bloques: {resultado.total_bloques}")
     typer.echo(f"Caracteres: {resultado.total_caracteres}")
     typer.echo(f"Tokens aprox: {round(resultado.total_caracteres / 4)}")
+
+
+
+@app.command("generar-estado-actual")
+def generar_estado_actual_cmd(
+    paquete_indice: Annotated[Path, typer.Option("--paquete-indice", help="Ruta a paquete_analisis/indice_paquete.json.")],
+    output_dir: Annotated[Path, typer.Option("--output-dir", help="Carpeta de salida para estado_actual.")],
+) -> None:
+    """Genera prompt y material reducido para analizar el estado procesal actual."""
+    try:
+        resultado = generar_estado_actual(
+            paquete_indice_path=paquete_indice,
+            output_dir=output_dir,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Estado actual: ok")
+    typer.echo(f"Paquete índice: {resultado.paquete_indice_path}")
+    typer.echo(f"Output dir: {resultado.output_dir}")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Prompt: {resultado.prompt_path}")
+    typer.echo(f"Material: {resultado.material_path}")
+    typer.echo(f"Bloques: {resultado.total_bloques}")
+    typer.echo(f"Caracteres material: {resultado.total_caracteres_material}")
+    typer.echo(f"Tokens aprox material: {round(resultado.total_caracteres_material / 4)}")
 
 
 @app.command("dashboard")
