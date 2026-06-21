@@ -530,59 +530,361 @@ def build_filename(order: int, fecha_iso: str | None, descripcion: str, used_nam
     return filename
 
 
-def extract_rows(page: Page, cfg: Config) -> list[dict[str, Any]]:
+
+def _safe_locator_count(page: Page, selector: str) -> int:
+    try:
+        return page.locator(selector).count()
+    except Exception:
+        return 0
+
+
+
+def _current_table_signature(page: Page, cfg: Config) -> str:
+    """
+    Firma estable de la tabla visible.
+
+    Usa primero los hrefs PDF detectados y luego el texto de las filas descargables.
+    Esta estrategia es más robusta para el paginador del SCW que firmar toda la tabla.
+    """
+    try:
+        hrefs = page.locator(cfg.selectors.row_pdf).evaluate_all(
+            """
+            els => els.map(a => a.getAttribute('href') || '').filter(Boolean)
+            """
+        )
+    except Exception:
+        hrefs = []
+
+    try:
+        row_texts = page.locator(cfg.selectors.rows).evaluate_all(
+            """
+            rows => rows.map(tr => {
+                const txt = (tr.innerText || tr.textContent || '').trim().replace(/\\s+/g, ' ');
+                return txt;
+            }).filter(Boolean)
+            """
+        )
+    except Exception:
+        row_texts = []
+
+    payload = "HREFS:\\n" + "\\n".join(hrefs) + "\\nROWS:\\n" + "\\n".join(row_texts)
+    return hashlib.sha1(payload.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _extract_visible_rows(
+    page: Page,
+    cfg: Config,
+    *,
+    section: str,
+    page_number: int,
+    start_order: int,
+    used_names: set[str],
+    seen_hrefs: set[str],
+) -> list[dict[str, Any]]:
     rows = page.locator(cfg.selectors.rows)
     count = rows.count()
-    if count == 0:
-        raise CaptureError(f"No se encontraron actuaciones con selector: {cfg.selectors.rows}")
-
-    index: list[dict[str, Any]] = []
-    used_names: set[str] = set()
+    items: list[dict[str, Any]] = []
 
     for i in range(count):
         row = rows.nth(i)
-        fecha_txt = row.locator(cfg.selectors.row_fecha).first.inner_text(timeout=cfg.timeout_ms).strip()
-        descripcion = row.locator(cfg.selectors.row_descripcion).first.inner_text(timeout=cfg.timeout_ms).strip()
+        try:
+            fecha_txt = row.locator(cfg.selectors.row_fecha).first.inner_text(timeout=cfg.timeout_ms).strip()
+        except Exception:
+            fecha_txt = ""
+        try:
+            descripcion = row.locator(cfg.selectors.row_descripcion).first.inner_text(timeout=cfg.timeout_ms).strip()
+        except Exception:
+            descripcion = ""
+
         link = row.locator(cfg.selectors.row_pdf).first
-        href = link.get_attribute("href")
+        try:
+            href = link.get_attribute("href", timeout=cfg.timeout_ms)
+        except Exception:
+            href = None
+
+        if not href:
+            continue
+
+        absolute_href = resolve_link(page.url, href)
+        dedupe_key = absolute_href or href
+        if dedupe_key in seen_hrefs:
+            continue
+        seen_hrefs.add(dedupe_key)
+
         fecha_iso = parse_date(fecha_txt)
-        filename = build_filename(i + 1, fecha_iso, descripcion, used_names)
-        index.append(
+        order = start_order + len(items)
+        filename = build_filename(order, fecha_iso, descripcion or f"actuacion_{order}", used_names)
+
+        items.append(
             {
-                "orden": i + 1,
+                "orden": order,
                 "fecha": fecha_iso,
-                "descripcion": " ".join(descripcion.split()),
+                "descripcion": " ".join((descripcion or "Sin descripción").split()),
                 "archivo": filename if cfg.download_pdfs else None,
-                "href_detectado": bool(href),
+                "href_detectado": True,
                 "sha256": None,
+                "_href": absolute_href,
+                "_seccion": section,
+                "_pagina": page_number,
             }
         )
+
+    return items
+
+
+
+def _click_next_page_if_possible(page: Page, cfg: Config, previous_signature: str) -> bool:
+    """
+    Clickea 'Siguiente' del paginador principal de actuaciones.
+
+    Importante:
+    - no busca cualquier 'siguiente' de la página;
+    - apunta al bloque divPagesAct;
+    - verifica que la firma cambie realmente.
+    """
+    selectors = [
+        'div[id$=":divPagesAct"] a:has([title="Siguiente"])',
+        'div[id$=":divPagesAct"] a.no-pagination-background:not(.last-page)',
+        '[id="expediente:j_idt217:j_idt234"]',
+    ]
+
+    clicked = False
+
+    for selector in selectors:
+        try:
+            loc = page.locator(selector)
+            if loc.count() <= 0:
+                continue
+
+            try:
+                loc.first.click(timeout=min(cfg.timeout_ms, 10_000))
+            except Exception:
+                loc.first.evaluate(
+                    """
+                    el => {
+                        el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+                        if (typeof el.click === 'function') {
+                            el.click();
+                        }
+                    }
+                    """
+                )
+
+            clicked = True
+            break
+        except Exception:
+            continue
+
+    if not clicked:
+        return False
+
+    for _ in range(40):
+        page.wait_for_timeout(500)
+        try:
+            wait_settle(page, min(cfg.timeout_ms, 5_000))
+        except Exception:
+            pass
+
+        new_signature = _current_table_signature(page, cfg)
+        if new_signature and new_signature != previous_signature:
+            return True
+
+    return False
+
+
+def _click_historicas_if_present(page: Page, cfg: Config) -> bool:
+    """Abre 'Ver históricas' si el enlace existe. Si queda vacío, no es error."""
+    selectors = [
+        '[id="expediente:btnActuacionesHistoricas"] a',
+        'a:has-text("Ver históricas")',
+        'a:has-text("Ver historicas")',
+        'input[value*="históricas" i]',
+        'input[value*="historicas" i]',
+        'button:has-text("Ver históricas")',
+        'button:has-text("Ver historicas")',
+    ]
+
+    for selector in selectors:
+        try:
+            loc = page.locator(selector)
+            if loc.count() <= 0:
+                continue
+
+            try:
+                loc.first.click(timeout=min(cfg.timeout_ms, 15_000))
+            except Exception:
+                page.evaluate(
+                    """
+                    (selector) => {
+                        const el = document.querySelector(selector);
+                        if (!el) return false;
+
+                        el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                        el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+                        if (typeof el.click === 'function') el.click();
+
+                        return true;
+                    }
+                    """,
+                    selector,
+                )
+
+            wait_settle(page, cfg.timeout_ms)
+            page.wait_for_timeout(1000)
+            return True
+        except Exception:
+            continue
+
+    return False
+
+
+def _collect_paginated_section(
+    page: Page,
+    cfg: Config,
+    *,
+    section: str,
+    start_order: int,
+    used_names: set[str],
+    seen_hrefs: set[str],
+    allow_empty_first_page: bool,
+    max_pages: int = 500,
+) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    seen_signatures: set[str] = set()
+
+    for page_number in range(1, max_pages + 1):
+        signature = _current_table_signature(page, cfg)
+        row_count = _safe_locator_count(page, cfg.selectors.rows)
+        pdf_count = _safe_locator_count(page, cfg.selectors.row_pdf)
+
+        if row_count == 0:
+            if page_number == 1 and allow_empty_first_page:
+                eprint(f"{section}: 0 actuaciones detectadas.")
+                break
+            if page_number == 1:
+                raise CaptureError(f"No se encontraron actuaciones con selector: {cfg.selectors.rows}")
+            break
+
+        if signature in seen_signatures:
+            eprint(f"{section}: corte por firma repetida en página {page_number}.")
+            break
+
+        seen_signatures.add(signature)
+
+        page_items = _extract_visible_rows(
+            page,
+            cfg,
+            section=section,
+            page_number=page_number,
+            start_order=start_order + len(collected),
+            used_names=used_names,
+            seen_hrefs=seen_hrefs,
+        )
+
+        collected.extend(page_items)
+
+        eprint(
+            f"{section}: página {page_number} | filas={row_count} | links_pdf={pdf_count} | nuevos={len(page_items)}"
+        )
+
+        moved = _click_next_page_if_possible(page, cfg, signature)
+        if not moved:
+            break
+
+    if len(seen_signatures) >= max_pages:
+        raise CaptureError(f"Corte preventivo: demasiadas páginas en {section} ({max_pages}).")
+
+    eprint(f"{section}: total_nuevos={len(collected)}")
+    return collected
+
+
+def extract_rows(page: Page, cfg: Config) -> list[dict[str, Any]]:
+    """
+    Extrae todas las actuaciones descargables:
+    - recorre páginas actuales en orden;
+    - luego intenta 'Ver históricas';
+    - si históricas está vacío, no falla;
+    - deduplica por href absoluto.
+    """
+    used_names: set[str] = set()
+    seen_hrefs: set[str] = set()
+    index: list[dict[str, Any]] = []
+
+    index.extend(
+        _collect_paginated_section(
+            page,
+            cfg,
+            section="actuales",
+            start_order=1,
+            used_names=used_names,
+            seen_hrefs=seen_hrefs,
+            allow_empty_first_page=False,
+        )
+    )
+
+    if _click_historicas_if_present(page, cfg):
+        index.extend(
+            _collect_paginated_section(
+                page,
+                cfg,
+                section="historicas",
+                start_order=len(index) + 1,
+                used_names=used_names,
+                seen_hrefs=seen_hrefs,
+                allow_empty_first_page=True,
+            )
+        )
+    else:
+        eprint("historicas: botón no encontrado; se continúa sin históricas.")
+
+    for order, item in enumerate(index, start=1):
+        item["orden"] = order
+
+    if not index:
+        raise CaptureError("No se detectaron documentos descargables en el expediente.")
+
     return index
 
 
 def download_rows(page: Page, cfg: Config, index: list[dict[str, Any]]) -> None:
+    """Descarga por URLs ya recolectadas, sin depender de la página visible actual."""
     _, raw_dir = ensure_output_dirs(cfg.output)
-    rows = page.locator(cfg.selectors.rows)
-    for i, item in enumerate(index):
-        row = rows.nth(i)
-        link = row.locator(cfg.selectors.row_pdf).first
-        filename = item["archivo"]
+
+    for item in index:
+        filename = item.get("archivo")
+        href = item.get("_href")
+
         if not filename:
             raise CaptureError("Estado interno inválido: archivo vacío con --download-pdfs")
+        if not href:
+            raise CaptureError(f"No hay href descargable para orden {item.get('orden')}")
+
         dest = raw_dir / filename
-        href = link.get_attribute("href")
-        ok = False
-        if href:
-            ok = download_via_request(page, cfg, href, dest)
+
+        ok = download_via_request(page, cfg, href, dest)
         if not ok:
-            download_via_click_or_viewer(page, cfg, row, cfg.selectors.row_pdf, dest)
+            raise CaptureError(
+                f"No se pudo descargar por request el documento orden {item.get('orden')}. "
+                "Revisar si ese enlace requiere visor/click especial."
+            )
+
         if not dest.exists() or dest.stat().st_size == 0:
             raise CaptureError(f"PDF vacío o faltante: {dest.name}")
-        # Validación suave. PJN puede servir application/pdf sin prefijo legible por wrapper, pero si el archivo local no parece PDF, cortar.
+
         if dest.read_bytes()[:4] != b"%PDF":
             raise CaptureError(f"El archivo descargado no parece PDF: {dest.name}")
+
         item["sha256"] = sha256_file(dest)
         item.pop("href_detectado", None)
+        item.pop("_href", None)
+
 
 
 def write_index(output: Path, index: list[dict[str, Any]], download_pdfs: bool) -> Path:
