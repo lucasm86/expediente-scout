@@ -1,0 +1,293 @@
+id: ordinario_v1
+nombre: "Proceso ordinario - control general"
+version: "0.1"
+descripcion: >
+  Playbook procesal base para analizar expedientes ordinarios civiles,
+  comerciales o asimilables. Sirve para detectar etapa actual, hitos
+  cumplidos, hitos pendientes, documentos relevantes y documentos accesorios.
+
+principio_general:
+  captura: "Siempre descargar todo el expediente disponible."
+  analisis: "No resumir todo. Analizar por hitos procesales y etapa actual."
+  regla: >
+    Si un hito posterior consolida una etapa anterior, los pasos intermedios
+    de esa etapa se conservan en la cronología bruta pero no deben ocupar el
+    informe principal salvo que exista incidencia, nulidad, rebeldía o cuestión pendiente.
+
+preguntas_de_control:
+  - "¿Cuál es el tipo de proceso?"
+  - "¿Cuál es la etapa procesal actual?"
+  - "¿Existe demanda inicial?"
+  - "¿Quiénes son los demandados?"
+  - "¿La litis está integrada o trabada?"
+  - "¿Contestaron demanda todos los demandados?"
+  - "¿Hubo rebeldía?"
+  - "¿Hubo traslado de contestación de demanda?"
+  - "¿La actora contestó el traslado?"
+  - "¿Se abrió la causa a prueba?"
+  - "¿Qué prueba se ordenó producir?"
+  - "¿Qué prueba produjo cada parte?"
+  - "¿Hay certificación de prueba?"
+  - "¿Queda prueba pendiente?"
+  - "¿Se presentaron alegatos?"
+  - "¿Se llamó autos para sentencia?"
+  - "¿Hay sentencia?"
+  - "¿La sentencia fue apelada?"
+  - "¿Hay resolución de Cámara?"
+  - "¿Está en etapa de ejecución?"
+  - "¿Se pagó capital?"
+  - "¿Se regularon honorarios?"
+  - "¿Se pagaron honorarios?"
+  - "¿Cuál es el próximo paso útil?"
+
+hitos:
+  - id: demanda_interpuesta
+    nombre: "Demanda interpuesta"
+    importancia: alta
+    buscar_en_descripcion:
+      - "demanda"
+      - "inicia demanda"
+      - "promueve demanda"
+      - "interpone demanda"
+    documentos_clave:
+      - "demanda inicial"
+      - "documental acompañada"
+    leer_completo: true
+
+  - id: demandados_identificados
+    nombre: "Demandados identificados"
+    importancia: alta
+    fuente_preferida:
+      - "demanda"
+      - "providencia de traslado"
+      - "contestación de demanda"
+    leer_completo: true
+
+  - id: traslado_demanda
+    nombre: "Traslado de demanda"
+    importancia: media
+    buscar_en_descripcion:
+      - "traslado de demanda"
+      - "córrase traslado"
+      - "corrase traslado"
+      - "notifíquese"
+      - "notifiquese"
+    leer_completo: false
+
+  - id: litis_integrada
+    nombre: "Litis integrada o trabada"
+    importancia: alta
+    buscar_en_descripcion:
+      - "litis integrada"
+      - "trabada la litis"
+      - "integrada la litis"
+      - "por contestada demanda"
+      - "rebeldía"
+      - "rebeldia"
+    efecto_si_cumplido:
+      - "No reconstruir en detalle cada cédula o reintento de notificación salvo incidencia pendiente."
+      - "Priorizar demanda y contestaciones."
+    leer_completo: true
+
+  - id: contestacion_demanda
+    nombre: "Contestación de demanda"
+    importancia: alta
+    buscar_en_descripcion:
+      - "contesta demanda"
+      - "contestación de demanda"
+      - "contestacion de demanda"
+      - "opone excepciones"
+    leer_completo: true
+
+  - id: traslado_contestacion
+    nombre: "Traslado de contestación de demanda"
+    importancia: media
+    buscar_en_descripcion:
+      - "traslado de la contestación"
+      - "traslado de la contestacion"
+      - "contesta traslado"
+      - "contestación de traslado"
+      - "contestacion de traslado"
+    leer_completo: true
+
+  - id: apertura_prueba
+    nombre: "Apertura a prueba"
+    importancia: alta
+    buscar_en_descripcion:
+      - "apertura a prueba"
+      - "ábrese a prueba"
+      - "abrese a prueba"
+      - "audiencia preliminar"
+      - "provee prueba"
+    leer_completo: true
+
+  - id: prueba_producida
+    nombre: "Prueba producida"
+    importancia: alta
+    buscar_en_descripcion:
+      - "pericia"
+      - "informe"
+      - "oficio"
+      - "testimonial"
+      - "absolución"
+      - "absolucion"
+      - "documental"
+    leer_completo: false
+
+  - id: certificacion_prueba
+    nombre: "Certificación de prueba"
+    importancia: alta
+    buscar_en_descripcion:
+      - "certificación de prueba"
+      - "certificacion de prueba"
+      - "certifíquese la prueba"
+      - "certifiquese la prueba"
+      - "prueba pendiente"
+    efecto_si_cumplido:
+      - "Tomar este auto como fuente principal sobre prueba producida y pendiente."
+      - "No reconstruir toda la producción probatoria salvo contradicción o necesidad especial."
+    leer_completo: true
+
+  - id: alegatos
+    nombre: "Alegatos"
+    importancia: alta
+    buscar_en_descripcion:
+      - "alega"
+      - "alegato"
+      - "alegatos"
+      - "autos para alegar"
+    leer_completo: true
+
+  - id: autos_para_sentencia
+    nombre: "Llamamiento de autos para sentencia"
+    importancia: alta
+    buscar_en_descripcion:
+      - "autos para sentencia"
+      - "llámese autos"
+      - "llamese autos"
+      - "pasen los autos a sentencia"
+    leer_completo: true
+
+  - id: sentencia
+    nombre: "Sentencia"
+    importancia: alta
+    buscar_en_descripcion:
+      - "sentencia"
+      - "sentencia definitiva"
+      - "fallo"
+    leer_completo: true
+
+  - id: apelacion
+    nombre: "Apelación"
+    importancia: alta
+    buscar_en_descripcion:
+      - "apela"
+      - "apelación"
+      - "apelacion"
+      - "recurso de apelación"
+      - "recurso de apelacion"
+      - "concede recurso"
+    leer_completo: true
+
+  - id: camara
+    nombre: "Intervención o resolución de Cámara"
+    importancia: alta
+    buscar_en_descripcion:
+      - "cámara"
+      - "camara"
+      - "sala"
+      - "resuelve cámara"
+      - "resuelve camara"
+      - "devuélvase"
+      - "devuelvase"
+    leer_completo: true
+
+  - id: ejecucion_sentencia
+    nombre: "Ejecución de sentencia"
+    importancia: alta
+    buscar_en_descripcion:
+      - "ejecución"
+      - "ejecucion"
+      - "liquidación"
+      - "liquidacion"
+      - "intimación de pago"
+      - "intimacion de pago"
+      - "embargo"
+      - "pago"
+      - "dación en pago"
+      - "dacion en pago"
+    leer_completo: true
+
+  - id: honorarios
+    nombre: "Honorarios"
+    importancia: alta
+    buscar_en_descripcion:
+      - "honorarios"
+      - "regulación"
+      - "regulacion"
+      - "aportes"
+      - "pago de honorarios"
+    leer_completo: true
+
+reglas_de_omision:
+  - id: notificaciones_superadas
+    condicion: "Si la litis está integrada."
+    omitir_del_informe:
+      - "cédulas de traslado"
+      - "constancias de confronte"
+      - "reintentos de notificación"
+      - "movimientos administrativos de notificación"
+    excepciones:
+      - "nulidad de notificación"
+      - "rebeldía"
+      - "demandado no notificado"
+      - "cuestión pendiente sobre domicilio"
+
+  - id: prueba_certificada
+    condicion: "Si existe auto de certificación de prueba."
+    omitir_del_informe:
+      - "oficios individuales ya certificados"
+      - "agregaciones probatorias sin incidencia"
+      - "movimientos administrativos de producción de prueba"
+    excepciones:
+      - "prueba pendiente"
+      - "prueba observada"
+      - "impugnación de pericia"
+      - "caducidad o negligencia probatoria"
+
+  - id: etapa_sentencia_superada
+    condicion: "Si ya existe sentencia."
+    priorizar:
+      - "sentencia"
+      - "apelaciones"
+      - "cámara"
+      - "liquidación"
+      - "ejecución"
+      - "honorarios"
+    omitir_detalle:
+      - "pasos ordinarios previos salvo demanda, contestación y prueba clave"
+
+salidas:
+  informe_markdown:
+    incluir:
+      - "identificación del expediente"
+      - "tipo de proceso detectado"
+      - "etapa procesal actual"
+      - "resumen ejecutivo"
+      - "hitos cumplidos"
+      - "hitos pendientes"
+      - "documentos clave"
+      - "riesgos o cuestiones pendientes"
+      - "próximos pasos sugeridos"
+      - "puntos dudosos para revisión humana"
+
+  json_sistema:
+    incluir:
+      - "expediente_id"
+      - "tipo_proceso_detectado"
+      - "etapa_actual"
+      - "hitos"
+      - "pasos_procesales_relevantes"
+      - "documentos_accesorios"
+      - "documentos_clave"
+      - "advertencias"
