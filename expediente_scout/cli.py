@@ -25,6 +25,7 @@ from expediente_scout.pipeline.reportar import reportar_expediente
 from expediente_scout.pipeline.seleccionar_lectura import generar_plan_lectura
 from expediente_scout.pipeline.resolver_plan_lectura import generar_plan_lectura_resuelto
 from expediente_scout.pipeline.extraer_texto_seleccionado import generar_extraccion_texto
+from expediente_scout.pipeline.generar_paquete_analisis import generar_paquete_analisis
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -352,6 +353,33 @@ def extraer_texto_seleccionado_cmd(
     typer.echo(f"Extraídas: {resultado.total_extraidas}")
     typer.echo(f"Sin texto: {resultado.total_sin_texto}")
     typer.echo(f"Errores: {resultado.total_errores}")
+
+
+
+@app.command("generar-paquete-analisis")
+def generar_paquete_analisis_cmd(
+    extraccion: Annotated[Path, typer.Option("--extraccion", help="Ruta a extraccion_texto.json.")],
+    output_dir: Annotated[Path, typer.Option("--output-dir", help="Carpeta de salida para el paquete de análisis.")],
+) -> None:
+    """Genera un paquete Markdown/JSON por hitos desde la extracción de texto."""
+    try:
+        resultado = generar_paquete_analisis(
+            extraccion_path=extraccion,
+            output_dir=output_dir,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Paquete de análisis: ok")
+    typer.echo(f"Extracción: {resultado.extraccion_path}")
+    typer.echo(f"Output dir: {resultado.output_dir}")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Mapa: {resultado.mapa_path}")
+    typer.echo(f"Documentos: {resultado.total_documentos}")
+    typer.echo(f"Bloques: {resultado.total_bloques}")
+    typer.echo(f"Caracteres: {resultado.total_caracteres}")
+    typer.echo(f"Tokens aprox: {round(resultado.total_caracteres / 4)}")
 
 
 @app.command("dashboard")
