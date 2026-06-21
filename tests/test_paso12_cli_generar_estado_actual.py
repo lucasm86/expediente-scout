@@ -55,14 +55,17 @@ def test_paso12_cli_generar_estado_actual(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert "Estado actual: ok" in result.output
     assert "Bloques: 1" in result.output
+    assert "Input LLM:" in result.output
 
     indice_path = output_dir / "indice_estado_actual.json"
     prompt_path = output_dir / "00_prompt_estado_actual.md"
     material_path = output_dir / "01_material_estado_actual.md"
+    input_llm_path = output_dir / "02_input_llm_estado_actual.md"
 
     assert indice_path.exists()
     assert prompt_path.exists()
     assert material_path.exists()
+    assert input_llm_path.exists()
 
     indice = json.loads(indice_path.read_text(encoding="utf-8"))
     assert indice["hitos_incluidos"] == ["ejecucion_sentencia"]
@@ -71,3 +74,10 @@ def test_paso12_cli_generar_estado_actual(tmp_path: Path) -> None:
     material = material_path.read_text(encoding="utf-8")
     assert "Dación en pago acreditada" in material
     assert "Bloque incluido: ejecucion_sentencia" in material
+
+    input_llm = input_llm_path.read_text(encoding="utf-8")
+    assert "Input completo para LLM" in input_llm
+    assert "Prompt de análisis" in input_llm
+    assert r"\n\n## Prompt de análisis" not in input_llm
+    assert "expediente\n\n## Prompt de análisis" in input_llm
+    assert "Material documental" in input_llm

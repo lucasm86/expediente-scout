@@ -448,6 +448,7 @@ def generar_estado_actual_cmd(
     typer.echo(f"Índice: {resultado.indice_path}")
     typer.echo(f"Prompt: {resultado.prompt_path}")
     typer.echo(f"Material: {resultado.material_path}")
+    typer.echo(f"Input LLM: {resultado.input_llm_path}")
     typer.echo(f"Bloques: {resultado.total_bloques}")
     typer.echo(f"Caracteres material: {resultado.total_caracteres_material}")
     typer.echo(f"Tokens aprox material: {round(resultado.total_caracteres_material / 4)}")

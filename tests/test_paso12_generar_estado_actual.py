@@ -50,11 +50,20 @@ def test_paso12_generar_estado_actual(tmp_path: Path) -> None:
     assert resultado.indice_path.exists()
     assert resultado.prompt_path.exists()
     assert resultado.material_path.exists()
+    assert resultado.input_llm_path.exists()
 
     material = resultado.material_path.read_text(encoding="utf-8")
     assert "Mapa general" in material
     assert "Dación en pago acreditada" in material
     assert "Bloque incluido: ejecucion_sentencia" in material
+
+    input_llm = resultado.input_llm_path.read_text(encoding="utf-8")
+    assert "Input completo para LLM" in input_llm
+    assert "Prompt de análisis" in input_llm
+    assert r"\n\n## Prompt de análisis" not in input_llm
+    assert "expediente\n\n## Prompt de análisis" in input_llm
+    assert "Material documental" in input_llm
+    assert "Dación en pago acreditada" in input_llm
 
     indice = json.loads(resultado.indice_path.read_text(encoding="utf-8"))
     assert indice["hitos_incluidos"] == ["ejecucion_sentencia"]

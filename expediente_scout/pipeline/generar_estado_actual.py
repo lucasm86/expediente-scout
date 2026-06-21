@@ -52,6 +52,7 @@ class ResultadoEstadoActual:
     indice_path: Path
     prompt_path: Path
     material_path: Path
+    input_llm_path: Path
     total_bloques: int
     total_caracteres_material: int
 
@@ -159,6 +160,7 @@ def generar_estado_actual(
 
     prompt_path = output_dir / "00_prompt_estado_actual.md"
     material_path = output_dir / "01_material_estado_actual.md"
+    input_llm_path = output_dir / "02_input_llm_estado_actual.md"
     indice_path = output_dir / "indice_estado_actual.json"
 
     prompt_path.write_text(PROMPT_ESTADO_ACTUAL.strip() + "\n", encoding="utf-8")
@@ -169,11 +171,23 @@ def generar_estado_actual(
     )
     material_path.write_text(material, encoding="utf-8")
 
+    input_llm = (
+        "# Input completo para LLM - Estado actual del expediente\n\n"
+        "## Prompt de análisis\n\n"
+        + PROMPT_ESTADO_ACTUAL.strip()
+        + "\n\n---\n\n"
+        "## Material documental\n\n"
+        + material.strip()
+        + "\n"
+    )
+    input_llm_path.write_text(input_llm, encoding="utf-8")
+
     indice_estado = {
         "paquete_indice_path": str(paquete_indice_path),
         "output_dir": str(output_dir),
         "prompt_path": str(prompt_path),
         "material_path": str(material_path),
+        "input_llm_path": str(input_llm_path),
         "hitos_incluidos": [b.get("hito") for b in bloques],
         "total_bloques": len(bloques),
         "total_caracteres_material": len(material),
@@ -192,6 +206,7 @@ def generar_estado_actual(
         indice_path=indice_path,
         prompt_path=prompt_path,
         material_path=material_path,
+        input_llm_path=input_llm_path,
         total_bloques=len(bloques),
         total_caracteres_material=len(material),
     )
