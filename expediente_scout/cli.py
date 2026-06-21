@@ -24,6 +24,7 @@ from expediente_scout.pipeline.novedades import detectar_novedades_captura
 from expediente_scout.pipeline.reportar import reportar_expediente
 from expediente_scout.pipeline.seleccionar_lectura import generar_plan_lectura
 from expediente_scout.pipeline.resolver_plan_lectura import generar_plan_lectura_resuelto
+from expediente_scout.pipeline.extraer_texto_seleccionado import generar_extraccion_texto
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -323,6 +324,34 @@ def resolver_plan_lectura_cmd(
     typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
     typer.echo(f"Accesorias: {resultado.total_accesorias}")
     typer.echo(f"Faltantes: {resultado.total_faltantes}")
+
+
+
+@app.command("extraer-texto-seleccionado")
+def extraer_texto_seleccionado_cmd(
+    plan: Annotated[Path, typer.Option("--plan", help="Ruta a plan_lectura_resuelto.json.")],
+    output_dir: Annotated[Path, typer.Option("--output-dir", help="Carpeta de salida para textos_seleccionados/ y extraccion_texto.json.")],
+    no_strict: Annotated[bool, typer.Option("--no-strict", help="No fallar si un PDF seleccionado no puede leerse.")] = False,
+) -> None:
+    """Extrae texto de los PDFs seleccionados en un plan de lectura resuelto."""
+    try:
+        resultado = generar_extraccion_texto(
+            plan_path=plan,
+            output_dir=output_dir,
+            strict=not no_strict,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Extracción de texto seleccionado: ok")
+    typer.echo(f"Plan: {resultado.plan_path}")
+    typer.echo(f"Output dir: {resultado.output_dir}")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
+    typer.echo(f"Extraídas: {resultado.total_extraidas}")
+    typer.echo(f"Sin texto: {resultado.total_sin_texto}")
+    typer.echo(f"Errores: {resultado.total_errores}")
 
 
 @app.command("dashboard")
