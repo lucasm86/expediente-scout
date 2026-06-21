@@ -1,0 +1,176 @@
+id: estado_actual_v1
+nombre: Política documental para estado actual
+version: 1
+
+objetivo: >
+  Reducir el input para LLM evitando transcribir íntegramente escritos de mero trámite,
+  sin perder datos procesales, montos, vencimientos, contactos, CBU, CUIT, domicilios,
+  roles de intervinientes ni rutas a documentos fuente.
+
+principio_general: >
+  El LLM debe recibir texto completo únicamente de piezas procesales sustanciales.
+  Los escritos simples deben convertirse en resumen operativo estructurado.
+  Todo documento debe conservar referencia a orden, fecha, descripción, archivo PDF
+  y texto fuente para auditoría.
+
+modos_inclusion:
+  texto_completo:
+    descripcion: Incluir el texto completo extraído del documento.
+    usar_para:
+      - demanda
+      - contestacion_demanda
+      - contesta_traslado_sustancial
+      - apertura_prueba
+      - certificacion_prueba
+      - alegatos
+      - sentencia
+      - sentencia_camara
+      - homologacion_acuerdo
+      - liquidacion
+      - planilla
+      - resolucion_sustancial
+
+  extracto_relevante:
+    descripcion: Incluir sólo el tramo resolutivo o útil del documento.
+    usar_para:
+      - proveido_con_monto
+      - intimacion_judicial
+      - libramiento_de_giro
+      - dacion_en_pago_proveida
+      - regulacion_honorarios
+      - concesion_apelacion
+      - resolucion_sobre_apelacion
+
+  resumen_operativo:
+    descripcion: Convertir el escrito en una ficha breve con hechos, montos, pedidos y datos útiles.
+    usar_para:
+      - solicita_se_intime
+      - acredita_cumplimiento
+      - da_en_pago
+      - solicita_archivo
+      - solicita_transferencia
+      - acompana_cbu
+      - constancia_cbu
+      - perito_solicita_pago
+      - perito_solicita_regulacion
+      - perito_apela_honorarios
+      - acompana_constancia_fiscal
+      - acompana_documental_simple
+
+  solo_metadata:
+    descripcion: No incluir texto extraído, sólo registrar existencia, fecha, orden y efecto procesal.
+    usar_para:
+      - cedula_diligenciada
+      - oficio_enviado
+      - oficio_recibido
+      - deo_enviado
+      - deo_recibido
+      - mero_agreguese
+      - tengase_presente
+      - hagase_saber_simple
+      - documentacion_repetida
+
+campos_resumen_operativo:
+  obligatorios:
+    - orden
+    - fecha
+    - descripcion
+    - modo_inclusion
+    - efecto_procesal
+    - archivo_pdf
+    - archivo_texto
+
+  extraer_si_aparece:
+    personas:
+      - nombre
+      - rol
+      - caracter
+      - matricula
+      - telefono
+      - email
+      - domicilio
+      - domicilio_electronico
+      - cuit_cuil_dni
+      - condicion_iva
+
+    montos:
+      - capital
+      - honorarios
+      - iva
+      - intereses
+      - total
+      - cuota
+      - saldo
+
+    datos_bancarios:
+      - banco
+      - tipo_cuenta
+      - numero_cuenta
+      - cbu
+      - alias
+      - titular
+      - cuit_cuil_titular
+
+    procesales:
+      - peticion
+      - proveido
+      - plazo
+      - vencimiento
+      - apercibimiento
+      - estado_resultante
+      - proximo_paso
+
+reglas_por_descripcion:
+  texto_completo:
+    - demanda firmada
+    - contesta demanda
+    - contesta traslado
+    - apertura a prueba
+    - certificacion de prueba
+    - alegatos
+    - sentencia
+    - homologacion
+    - acuerdo
+    - liquidacion
+    - planilla
+
+  extracto_relevante:
+    - intimacion dda capital
+    - libramiento de giro
+    - concede apelacion
+    - regulacion de honorarios
+    - dacion en pago, agreguese
+    - aclara monto
+    - aclaredo el monto
+    - aclare monto
+
+  resumen_operativo:
+    - solicita se intime
+    - acredita cumplimiento
+    - da en pago
+    - solicita archivo
+    - solicita transferencia
+    - cbu actor
+    - cbu letrado
+    - constancia cbu
+    - transferencia honorarios
+    - honorarios letrado
+    - honorarios perito
+    - perito contadora solicita
+    - perito contadora apela
+    - solicita regulacion de honorarios
+
+  solo_metadata:
+    - envio deo
+    - se recibio deo
+    - oficio comunicacion
+    - pedido de informes
+    - documental
+    - acompaña a confronte
+    - oficio para confronte
+
+salidas:
+  resumen_compacto_md: 01_estado_actual_compacto.md
+  referencias_json: 02_referencias_estado_actual.json
+  documentos_importantes_md: 03_documentos_importantes.md
+  input_llm_compacto_md: 04_input_llm_estado_actual_compacto.md
