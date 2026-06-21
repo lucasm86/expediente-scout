@@ -212,10 +212,23 @@ hitos:
       - "liquidacion"
       - "intimación de pago"
       - "intimacion de pago"
+      - "intimacion dda capital"
+      - "intimación dda capital"
+      - "solicita se intime"
       - "embargo"
       - "pago"
       - "dación en pago"
       - "dacion en pago"
+      - "acredita cumplimiento"
+      - "solicita archivo"
+      - "aclare monto"
+      - "libramiento de giro"
+      - "giro actor"
+      - "solicita transferencia"
+      - "transferencia"
+      - "cbu actor"
+      - "cbu letrado"
+      - "constancia cbu"
     leer_completo: true
 
   - id: honorarios
@@ -223,10 +236,13 @@ hitos:
     importancia: alta
     buscar_en_descripcion:
       - "honorarios"
+      - "honorarios letrado"
+      - "transferencia honorarios"
       - "regulación"
       - "regulacion"
       - "aportes"
       - "pago de honorarios"
+      - "cbu letrado"
     leer_completo: true
 
 reglas_de_omision:
