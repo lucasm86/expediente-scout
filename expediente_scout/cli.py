@@ -22,6 +22,7 @@ from expediente_scout.pipeline.ingerir import (
 from expediente_scout.pipeline.normalizar import normalizar_expediente
 from expediente_scout.pipeline.novedades import detectar_novedades_captura
 from expediente_scout.pipeline.reportar import reportar_expediente
+from expediente_scout.pipeline.seleccionar_lectura import generar_plan_lectura
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -268,6 +269,30 @@ def clasificar_playbook_cmd(
     typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
     typer.echo(f"Con hito: {resultado.total_con_hito}")
     typer.echo(f"Leer completo: {resultado.total_leer_completo}")
+
+
+
+@app.command("seleccionar-lectura")
+def seleccionar_lectura_cmd(
+    clasificacion: Annotated[Path, typer.Option("--clasificacion", help="Ruta a clasificacion_playbook.json.")],
+    output: Annotated[Path, typer.Option("--output", help="Ruta de salida para plan_lectura.json.")],
+) -> None:
+    """Genera un plan de lectura a partir de una clasificación por playbook."""
+    try:
+        resultado = generar_plan_lectura(
+            clasificacion_path=clasificacion,
+            output_path=output,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Plan de lectura: ok")
+    typer.echo(f"Clasificación: {resultado.clasificacion_path}")
+    typer.echo(f"Salida: {resultado.output_path}")
+    typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
+    typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
+    typer.echo(f"Accesorias: {resultado.total_accesorias}")
 
 
 @app.command("dashboard")
