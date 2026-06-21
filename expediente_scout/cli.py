@@ -26,6 +26,7 @@ from expediente_scout.pipeline.seleccionar_lectura import generar_plan_lectura
 from expediente_scout.pipeline.resolver_plan_lectura import generar_plan_lectura_resuelto
 from expediente_scout.pipeline.extraer_texto_seleccionado import generar_extraccion_texto
 from expediente_scout.pipeline.generar_paquete_analisis import generar_paquete_analisis
+from expediente_scout.pipeline.preanalisis import ejecutar_preanalisis
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -377,6 +378,48 @@ def generar_paquete_analisis_cmd(
     typer.echo(f"Índice: {resultado.indice_path}")
     typer.echo(f"Mapa: {resultado.mapa_path}")
     typer.echo(f"Documentos: {resultado.total_documentos}")
+    typer.echo(f"Bloques: {resultado.total_bloques}")
+    typer.echo(f"Caracteres: {resultado.total_caracteres}")
+    typer.echo(f"Tokens aprox: {round(resultado.total_caracteres / 4)}")
+
+
+
+@app.command("preanalisis")
+def preanalisis_cmd(
+    indice: Annotated[Path, typer.Option("--indice", help="Ruta al indice.json generado por la captura PJN.")],
+    raw_dir: Annotated[Path, typer.Option("--raw-dir", help="Carpeta raw con los PDFs descargados.")],
+    output_dir: Annotated[Path, typer.Option("--output-dir", help="Carpeta de salida del preanálisis.")],
+    playbook: Annotated[str, typer.Option("--playbook", help="ID del playbook procesal a usar.")] = "ordinario_v1",
+    no_strict: Annotated[bool, typer.Option("--no-strict", help="No fallar si algún PDF no puede resolverse o leerse.")] = False,
+) -> None:
+    """Ejecuta clasificación, selección, extracción y paquete de análisis en un solo paso."""
+    try:
+        resultado = ejecutar_preanalisis(
+            indice_path=indice,
+            raw_dir=raw_dir,
+            output_dir=output_dir,
+            playbook_id=playbook,
+            strict=not no_strict,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Preanálisis: ok")
+    typer.echo(f"Índice: {resultado.indice_path}")
+    typer.echo(f"Raw: {resultado.raw_dir}")
+    typer.echo(f"Output dir: {resultado.output_dir}")
+    typer.echo(f"Playbook: {resultado.playbook_id}")
+    typer.echo(f"Clasificación: {resultado.clasificacion_path}")
+    typer.echo(f"Plan lectura: {resultado.plan_lectura_path}")
+    typer.echo(f"Plan resuelto: {resultado.plan_lectura_resuelto_path}")
+    typer.echo(f"Extracción índice: {resultado.extraccion_indice_path}")
+    typer.echo(f"Paquete índice: {resultado.paquete_indice_path}")
+    typer.echo(f"Mapa general: {resultado.mapa_general_path}")
+    typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
+    typer.echo(f"Con hito: {resultado.total_con_hito}")
+    typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
+    typer.echo(f"Extraídas: {resultado.total_extraidas}")
     typer.echo(f"Bloques: {resultado.total_bloques}")
     typer.echo(f"Caracteres: {resultado.total_caracteres}")
     typer.echo(f"Tokens aprox: {round(resultado.total_caracteres / 4)}")
