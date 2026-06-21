@@ -23,6 +23,7 @@ from expediente_scout.pipeline.normalizar import normalizar_expediente
 from expediente_scout.pipeline.novedades import detectar_novedades_captura
 from expediente_scout.pipeline.reportar import reportar_expediente
 from expediente_scout.pipeline.seleccionar_lectura import generar_plan_lectura
+from expediente_scout.pipeline.resolver_plan_lectura import generar_plan_lectura_resuelto
 from expediente_scout.pipeline.validar_analisis import validar_analisis_archivo
 
 app = typer.Typer(
@@ -293,6 +294,35 @@ def seleccionar_lectura_cmd(
     typer.echo(f"Actuaciones: {resultado.total_actuaciones}")
     typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
     typer.echo(f"Accesorias: {resultado.total_accesorias}")
+
+
+
+@app.command("resolver-plan-lectura")
+def resolver_plan_lectura_cmd(
+    plan: Annotated[Path, typer.Option("--plan", help="Ruta a plan_lectura.json.")],
+    raw_dir: Annotated[Path, typer.Option("--raw-dir", help="Carpeta raw con PDFs descargados.")],
+    output: Annotated[Path, typer.Option("--output", help="Ruta de salida para plan_lectura_resuelto.json.")],
+    no_strict: Annotated[bool, typer.Option("--no-strict", help="No fallar si hay PDFs faltantes.")] = False,
+) -> None:
+    """Resuelve rutas físicas de PDFs para un plan de lectura."""
+    try:
+        resultado = generar_plan_lectura_resuelto(
+            plan_path=plan,
+            raw_dir=raw_dir,
+            output_path=output,
+            strict=not no_strict,
+        )
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo("Plan de lectura resuelto: ok")
+    typer.echo(f"Plan: {resultado.plan_path}")
+    typer.echo(f"Raw: {resultado.raw_dir}")
+    typer.echo(f"Salida: {resultado.output_path}")
+    typer.echo(f"Seleccionadas: {resultado.total_seleccionadas}")
+    typer.echo(f"Accesorias: {resultado.total_accesorias}")
+    typer.echo(f"Faltantes: {resultado.total_faltantes}")
 
 
 @app.command("dashboard")
