@@ -545,3 +545,42 @@ def entregar(
     typer.echo(f"Chunks: {entrega.chunks}")
     typer.echo(f"PDF: {entrega.ruta_pdf}")
     typer.echo(f"Log: {entrega.ruta_json}")
+
+from pathlib import Path as _CompactPath
+
+
+@app.command("compactar-estado-actual")
+def compactar_estado_actual_cmd(
+    indice_estado: _CompactPath = typer.Option(
+        ...,
+        "--indice-estado",
+        help="Ruta al indice_estado_actual.json generado por generar-estado-actual.",
+    ),
+    output_dir: _CompactPath = typer.Option(
+        ...,
+        "--output-dir",
+        help="Directorio de salida para el estado actual compacto.",
+    ),
+    policy: _CompactPath = typer.Option(
+        _CompactPath("config/document_policies/estado_actual_v1.yaml"),
+        "--policy",
+        help="Política documental para compactar el estado actual.",
+    ),
+) -> None:
+    from expediente_scout.pipeline.compactar_estado_actual import compactar_estado_actual
+
+    resultado = compactar_estado_actual(
+        indice_estado_path=indice_estado,
+        output_dir=output_dir,
+        policy_path=policy,
+    )
+
+    typer.echo("Compactación estado actual: ok")
+    typer.echo(f"Documentos: {resultado.total_documentos}")
+    typer.echo(f"Texto completo: {resultado.total_texto_completo}")
+    typer.echo(f"Extracto relevante: {resultado.total_extracto_relevante}")
+    typer.echo(f"Resumen operativo: {resultado.total_resumen_operativo}")
+    typer.echo(f"Solo metadata: {resultado.total_solo_metadata}")
+    typer.echo(f"Input compacto: {resultado.input_llm_compacto_path}")
+    typer.echo(f"Caracteres input compacto: {resultado.caracteres_input_compacto}")
+    typer.echo(f"Tokens aprox input compacto: {round(resultado.caracteres_input_compacto / 4)}")
