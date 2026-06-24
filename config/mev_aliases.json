@@ -1,0 +1,30 @@
+{
+  "jurisdicciones": {
+    "LZ": {
+      "nombre": "Lomas de Zamora",
+      "mev_label": "Lomas de Zamora"
+    },
+    "SI": {
+      "nombre": "San Isidro",
+      "mev_label": "San Isidro"
+    },
+    "SM": {
+      "nombre": "San Martín",
+      "mev_label": "San Martín"
+    }
+  },
+  "organismos": {
+    "CC": {
+      "fuero": "Civil y Comercial",
+      "plantilla": "Juzgado Civil y Comercial Nº {n}"
+    },
+    "T": {
+      "fuero": "Laboral",
+      "plantilla": "Tribunal de Trabajo Nº {n}"
+    },
+    "F": {
+      "fuero": "Familia",
+      "plantilla": "Juzgado de Familia Nº {n}"
+    }
+  }
+}

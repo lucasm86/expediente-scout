@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--help" || $# -lt 3 ]]; then
+  cat <<'EOF'
+Uso:
+  scout-mev JURISDICCION ORGANISMO EXPEDIENTE
+
+Ejemplos:
+  scout-mev LZ CC8 85092
+  scout-mev SI CC6 23308
+  scout-mev SM T2 12345
+
+Códigos:
+  LZ = Lomas de Zamora
+  SI = San Isidro
+  SM = San Martín
+
+  CC8 = Juzgado Civil y Comercial Nº 8
+  T2  = Tribunal de Trabajo Nº 2
+  F3  = Juzgado de Familia Nº 3
+
+Este comando actualmente valida y normaliza la consulta MEV.
+La navegación real se implementa en el siguiente paso.
+EOF
+  exit 0
+fi
+
+JUR_RAW="$1"
+ORG_RAW="$2"
+EXP_RAW="$3"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG="$REPO_DIR/config/mev_aliases.json"
+
+python - "$JUR_RAW" "$ORG_RAW" "$EXP_RAW" "$CONFIG" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+jur_raw, org_raw, exp_raw, config_path = sys.argv[1:5]
+
+config = json.loads(Path(config_path).read_text(encoding="utf-8"))
+
+jur = jur_raw.strip().upper()
+org = org_raw.strip().upper()
+exp = exp_raw.strip()
+
+jurisdicciones = config["jurisdicciones"]
+organismos = config["organismos"]
+
+if jur not in jurisdicciones:
+    disponibles = ", ".join(sorted(jurisdicciones))
+    raise SystemExit(f"Jurisdicción no configurada: {jur}. Disponibles: {disponibles}")
+
+m = re.fullmatch(r"([A-Z]+)(\d+)", org)
+if not m:
+    raise SystemExit(f"Organismo inválido: {org}. Usar formato CC8, T2, F3, etc.")
+
+tipo, numero = m.group(1), int(m.group(2))
+
+if tipo not in organismos:
+    disponibles = ", ".join(sorted(organismos))
+    raise SystemExit(f"Tipo de organismo no configurado: {tipo}. Disponibles: {disponibles}")
+
+if not re.fullmatch(r"\d+(?:/\d{4})?", exp):
+    raise SystemExit("Expediente inválido. Usar número, por ejemplo 85092, o número/año.")
+
+jur_data = jurisdicciones[jur]
+org_data = organismos[tipo]
+
+organismo_nombre = org_data["plantilla"].format(n=numero)
+fuero = org_data["fuero"]
+
+exp_slug = exp.replace("/", "-")
+slug = f"{jur}-{org}-{exp_slug}"
+
+vault_dir = Path("/home/adso/.openclaw/workspace/Lucas's Vault/Expedientes/MEV") / slug
+final_md = vault_dir / f"{slug}_EXPEDIENTE.md"
+
+print("SCOUT-MEV PARSER OK")
+print(f"Jurisdicción: {jur} — {jur_data['nombre']}")
+print(f"MEV label: {jur_data['mev_label']}")
+print(f"Fuero: {fuero}")
+print(f"Organismo: {organismo_nombre}")
+print(f"Expediente buscado: {exp}")
+print(f"Slug: {slug}")
+print(f"MD final futuro: {final_md}")
+PY
