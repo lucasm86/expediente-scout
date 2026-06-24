@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 import json
@@ -154,8 +154,26 @@ def cargar_documentos(indice_estado_path: Path) -> tuple[dict[str, Any], list[Do
         if archivo:
             documentos.extend(parsear_documentos_bloque(Path(archivo), bloque_hito=hito))
 
-    documentos.sort(key=lambda d: d.orden)
-    return indice, documentos
+    deduplicados: dict[tuple[int, str, str], DocumentoEstadoActual] = {}
+
+    for doc in documentos:
+        key = (doc.orden, doc.fecha, normalizar_texto(doc.descripcion))
+        if key not in deduplicados:
+            deduplicados[key] = doc
+            continue
+
+        previo = deduplicados[key]
+        hitos = unicos(previo.hitos + doc.hitos)
+        bloques = unicos([previo.bloque_hito, doc.bloque_hito])
+        deduplicados[key] = replace(
+            previo,
+            hitos=hitos,
+            bloque_hito=", ".join(bloques),
+        )
+
+    documentos_finales = list(deduplicados.values())
+    documentos_finales.sort(key=lambda d: d.orden)
+    return indice, documentos_finales
 
 
 def decidir_modo_inclusion(doc: DocumentoEstadoActual, policy: dict[str, Any]) -> str:
