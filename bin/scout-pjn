@@ -1,0 +1,309 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ] || [ "$#" -lt 2 ]; then
+  cat <<'HELP'
+Uso:
+  scout-pjn FUERO NUMERO/AÑO
+
+Ejemplos:
+  scout-pjn CCF 002899/2026
+  scout-pjn CNT 017515/2024
+  scout-pjn CCF 2899/2026
+
+Opcional:
+  scout-pjn CCF 002899/2026 --force
+
+Qué hace:
+  1. Usa captura PJN existente si ya está descargada.
+  2. Si no existe, captura desde PJN.
+  3. Ejecuta preanálisis.
+  4. Intenta generar estado actual compacto.
+  5. Si eso falla, hace fallback al preanálisis.
+  6. Genera UN SOLO .md final en:
+     ~/.openclaw/workspace/Lucas's Vault/Expedientes/PJN/<FUERO-NUMERO-AÑO>/<FUERO-NUMERO-AÑO>_EXPEDIENTE.md
+HELP
+  exit 0
+fi
+
+FUERO="$1"
+EXP="$2"
+FORCE="${3:-}"
+
+if [[ ! "$EXP" =~ ^([0-9]+)/([0-9]{4})$ ]]; then
+  echo "ERROR: formato inválido. Usá: scout-pjn CCF 002899/2026"
+  exit 2
+fi
+
+NUM_RAW="${BASH_REMATCH[1]}"
+ANIO="${BASH_REMATCH[2]}"
+NUMERO="$(printf "%06d" "$((10#$NUM_RAW))")"
+SLUG="${FUERO}-${NUMERO}-${ANIO}"
+
+PROJECT_DIR="$HOME/proyectos/expediente-scout"
+CAPTURE_DIR="/tmp/pjn-download-${SLUG}"
+WORK_DIR="/tmp/pjn-estudios-openclaw/${SLUG}"
+VAULT_DIR="$HOME/.openclaw/workspace/Lucas's Vault/Expedientes/PJN/${SLUG}"
+FINAL_MD="$VAULT_DIR/${SLUG}_EXPEDIENTE.md"
+LOG="$WORK_DIR/scout-pjn.log"
+
+BASE_ENV="$PROJECT_DIR/.env.pjn.capture"
+TMP_ENV="/tmp/.env.pjn.capture.${SLUG}"
+
+mkdir -p "$WORK_DIR"
+mkdir -p "$VAULT_DIR"
+
+cd "$PROJECT_DIR"
+source .venv/bin/activate
+
+CAPTURADOR="scripts/pjn_capture_chromium.py"
+if [ ! -f "$CAPTURADOR" ]; then
+  CAPTURADOR="scripts/pjn_capture_chromium_v2.py"
+fi
+
+echo "=== scout-pjn ==="
+echo "Expediente: $FUERO $NUMERO/$ANIO"
+echo "Trabajo:    $WORK_DIR"
+echo "Vault:      $VAULT_DIR"
+echo "Final MD:   $FINAL_MD"
+echo "Log:        $LOG"
+echo
+
+{
+  echo "=== Inicio $(date -Is) ==="
+  echo "Expediente: $FUERO $NUMERO/$ANIO"
+  echo "Capture dir: $CAPTURE_DIR"
+  echo "Work dir: $WORK_DIR"
+  echo "Vault dir: $VAULT_DIR"
+  echo
+
+  if [ "$FORCE" = "--force" ] || [ ! -f "$CAPTURE_DIR/indice.json" ] || [ ! -d "$CAPTURE_DIR/raw" ]; then
+    echo "=== Preparando ENV PJN ==="
+    test -f "$BASE_ENV"
+    cp "$BASE_ENV" "$TMP_ENV"
+    chmod 600 "$TMP_ENV"
+
+    python - <<PY
+from pathlib import Path
+
+p = Path("$TMP_ENV")
+lines = p.read_text(encoding="utf-8").splitlines()
+key = "PJN_CAMARA_VALUE"
+value = "$FUERO"
+
+out = []
+found = False
+for line in lines:
+    if line.strip().startswith(key + "="):
+        out.append(f"{key}={value}")
+        found = True
+    else:
+        out.append(line)
+
+if not found:
+    out.append(f"{key}={value}")
+
+p.write_text("\\n".join(out) + "\\n", encoding="utf-8")
+print("PJN_CAMARA_VALUE=$FUERO")
+PY
+
+    echo
+    echo "=== Capturando PJN ==="
+    rm -rf "$CAPTURE_DIR"
+
+    python "$CAPTURADOR" \
+      --jurisdiccion pjn \
+      --numero "$NUMERO" \
+      --anio "$ANIO" \
+      --output "$CAPTURE_DIR" \
+      --env-path "$TMP_ENV" \
+      --headless \
+      --download-pdfs
+  else
+    echo "=== Captura existente detectada, no se recaptura ==="
+    echo "Usá --force para recapturar."
+  fi
+
+  echo
+  echo "=== Preanálisis ==="
+  rm -rf "$WORK_DIR/preanalisis"
+
+  scout preanalisis \
+    --indice "$CAPTURE_DIR/indice.json" \
+    --raw-dir "$CAPTURE_DIR/raw" \
+    --output-dir "$WORK_DIR/preanalisis" \
+    --playbook ordinario_v1
+
+  echo
+  echo "=== Estado actual compacto, si aplica ==="
+  rm -rf "$WORK_DIR/estado_actual" "$WORK_DIR/estado_actual_compacto"
+
+  set +e
+  scout generar-estado-actual \
+    --paquete-indice "$WORK_DIR/preanalisis/paquete_analisis/indice_paquete.json" \
+    --output-dir "$WORK_DIR/estado_actual"
+  ESTADO_RC=$?
+  set -e
+
+  if [ "$ESTADO_RC" -eq 0 ]; then
+    scout compactar-estado-actual \
+      --indice-estado "$WORK_DIR/estado_actual/indice_estado_actual.json" \
+      --output-dir "$WORK_DIR/estado_actual_compacto"
+  else
+    echo "Estado actual compacto no generado. Se usará fallback de preanálisis."
+  fi
+
+  echo
+  echo "=== Armar MD único ==="
+
+  python - <<'PY'
+import json
+import os
+from pathlib import Path
+from datetime import datetime
+
+fuero = os.environ["FUERO"]
+numero = os.environ["NUMERO"]
+anio = os.environ["ANIO"]
+slug = os.environ["SLUG"]
+
+capture = Path(os.environ["CAPTURE_DIR"])
+work = Path(os.environ["WORK_DIR"])
+vault = Path(os.environ["VAULT_DIR"])
+final_md = Path(os.environ["FINAL_MD"])
+log = Path(os.environ["LOG"])
+
+paquete = work / "preanalisis" / "paquete_analisis"
+mapa = paquete / "00_mapa_general.md"
+indice_paquete = paquete / "indice_paquete.json"
+bloques_dir = paquete / "bloques"
+
+estado_compacto_input = work / "estado_actual_compacto" / "04_input_llm_estado_actual_compacto.md"
+estado_compacto_md = work / "estado_actual_compacto" / "01_estado_actual_compacto.md"
+refs_json = work / "estado_actual_compacto" / "02_referencias_estado_actual.json"
+
+indice_captura = capture / "indice.json"
+raw_dir = capture / "raw"
+
+raw_pdf_count = len(list(raw_dir.glob("*.pdf"))) if raw_dir.exists() else 0
+
+actuaciones = None
+if indice_captura.exists():
+    try:
+        data = json.loads(indice_captura.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            actuaciones = len(data)
+        else:
+            actuaciones = len(data.get("items") or data.get("actuaciones") or [])
+    except Exception:
+        actuaciones = None
+
+bloques = sorted(bloques_dir.glob("*.md")) if bloques_dir.exists() else []
+
+partes = []
+partes.append(f"# Expediente PJN - {fuero} {numero}/{anio}")
+partes.append("")
+partes.append("## Entrega")
+partes.append("")
+partes.append(f"- Fecha: {datetime.now().isoformat(timespec='seconds')}")
+partes.append(f"- Expediente: {fuero} {numero}/{anio}")
+partes.append(f"- Slug: {slug}")
+partes.append(f"- Captura PJN: `{capture}`")
+partes.append(f"- Trabajo Scout: `{work}`")
+partes.append(f"- Log completo: `{log}`")
+partes.append(f"- PDFs descargados: {raw_pdf_count}")
+if actuaciones is not None:
+    partes.append(f"- Actuaciones detectadas: {actuaciones}")
+partes.append("")
+
+if estado_compacto_input.exists():
+    contenido_compacto = estado_compacto_input.read_text(encoding="utf-8", errors="replace")
+    partes.append("## Estado actual compacto")
+    partes.append("")
+    partes.append("Scout pudo generar estado actual compacto. Se incluye a continuación.")
+    partes.append("")
+    partes.append(contenido_compacto)
+    partes.append("")
+    partes.append("---")
+    partes.append("")
+else:
+    partes.append("## Estado actual compacto")
+    partes.append("")
+    partes.append("No se generó estado actual compacto. Se usa fallback de preanálisis completo.")
+    partes.append("Esto suele pasar cuando el expediente no tiene hitos compatibles con el filtro actual de estado actual.")
+    partes.append("")
+    partes.append("---")
+    partes.append("")
+
+if mapa.exists():
+    partes.append("## Mapa general")
+    partes.append("")
+    partes.append(mapa.read_text(encoding="utf-8", errors="replace"))
+    partes.append("")
+    partes.append("---")
+    partes.append("")
+
+for b in bloques:
+    partes.append(f"## Bloque de análisis: {b.name}")
+    partes.append("")
+    partes.append(b.read_text(encoding="utf-8", errors="replace"))
+    partes.append("")
+    partes.append("---")
+    partes.append("")
+
+texto = "\n".join(partes)
+final_md.write_text(texto, encoding="utf-8")
+
+caracteres = len(texto)
+tokens = round(caracteres / 4)
+
+resultado = {
+    "ok": True,
+    "tipo": "scout_pjn_md_unico",
+    "expediente": f"{fuero} {numero}/{anio}",
+    "slug": slug,
+    "final_md": str(final_md),
+    "capture_dir": str(capture),
+    "work_dir": str(work),
+    "log": str(log),
+    "pdfs_descargados": raw_pdf_count,
+    "actuaciones": actuaciones,
+    "bloques_md": len(bloques),
+    "estado_actual_compacto": estado_compacto_input.exists(),
+    "caracteres_final_md": caracteres,
+    "tokens_aprox_final_md": tokens,
+}
+
+(work / "resultado_scout_pjn.json").write_text(
+    json.dumps(resultado, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+
+print("MD único generado:", final_md)
+print("Caracteres:", caracteres)
+print("Tokens aprox:", tokens)
+print("Estado actual compacto:", estado_compacto_input.exists())
+print("Bloques:", len(bloques))
+PY
+
+  echo "=== Fin $(date -Is) ==="
+} > "$LOG" 2>&1
+
+python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+work = Path(os.environ["WORK_DIR"])
+resultado = json.loads((work / "resultado_scout_pjn.json").read_text(encoding="utf-8"))
+
+print("SCOUT-PJN OK")
+print("Expediente:", resultado["expediente"])
+print("MD único:", resultado["final_md"])
+print("PDFs:", resultado["pdfs_descargados"])
+print("Actuaciones:", resultado["actuaciones"])
+print("Bloques MD:", resultado["bloques_md"])
+print("Estado actual compacto:", resultado["estado_actual_compacto"])
+print("Tokens aprox MD:", resultado["tokens_aprox_final_md"])
+print("Log:", resultado["log"])
+PY

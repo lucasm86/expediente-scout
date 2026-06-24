@@ -23,3 +23,10 @@ pjn_capture_v2_bundle.zip
 scripts/*.bak.py
 data/expedientes/**/raw/
 data/expedientes/**/downloads/
+!.env.pjn.capture.example
+*.log
+tmp/
+logs/
+raw/
+pjn-download*/
+pjn-estudios*/
