@@ -218,11 +218,11 @@ def extraer_datos_utiles(texto: str) -> dict[str, list[str]]:
         "telefonos": unicos(re.findall(r"\b(?:\+?54\s*)?(?:\d{2,4}[-\s])?\d{3,4}[-\s]\d{3,4}\b", texto)),
         "emails": unicos(re.findall(r"[\w\.\-+]+@[\w\.\-]+\.\w+", texto)),
         "bancos": unicos(bancos),
-        "lineas_utiles": buscar_lineas_utiles(texto)[:18],
+        "lineas_utiles": buscar_lineas_utiles(texto)[:8],
     }
 
 
-def generar_extracto(texto: str, max_chars: int = 1800) -> str:
+def generar_extracto(texto: str, max_chars: int = 900) -> str:
     lineas = buscar_lineas_utiles(texto)
     if lineas:
         return "\n".join(f"- {line}" for line in lineas)[:max_chars].strip()
