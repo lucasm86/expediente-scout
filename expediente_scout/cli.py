@@ -584,3 +584,121 @@ def compactar_estado_actual_cmd(
     typer.echo(f"Input compacto: {resultado.input_llm_compacto_path}")
     typer.echo(f"Caracteres input compacto: {resultado.caracteres_input_compacto}")
     typer.echo(f"Tokens aprox input compacto: {round(resultado.caracteres_input_compacto / 4)}")
+
+@app.command("estudiar-pjn-local")
+def estudiar_pjn_local_cmd(
+    indice: Path = typer.Option(
+        ...,
+        "--indice",
+        help="Ruta al indice.json ya capturado desde PJN.",
+    ),
+    raw_dir: Path = typer.Option(
+        ...,
+        "--raw-dir",
+        help="Directorio raw/ con PDFs ya descargados.",
+    ),
+    output_dir: Path = typer.Option(
+        ...,
+        "--output-dir",
+        help="Directorio de salida para el estudio completo.",
+    ),
+    playbook: str = typer.Option(
+        "ordinario_v1",
+        "--playbook",
+        help="Playbook procesal a utilizar.",
+    ),
+    policy: Path = typer.Option(
+        Path("config/document_policies/estado_actual_v1.yaml"),
+        "--policy",
+        help="Política documental para compactar estado actual.",
+    ),
+) -> None:
+    import json
+    import subprocess
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    preanalisis_dir = output_dir / "preanalisis"
+    estado_dir = output_dir / "estado_actual"
+    compacto_dir = output_dir / "estado_actual_compacto"
+
+    subprocess.run(
+        [
+            "scout",
+            "preanalisis",
+            "--indice",
+            str(indice),
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(preanalisis_dir),
+            "--playbook",
+            playbook,
+        ],
+        check=True,
+    )
+
+    paquete_indice = preanalisis_dir / "paquete_analisis" / "indice_paquete.json"
+
+    subprocess.run(
+        [
+            "scout",
+            "generar-estado-actual",
+            "--paquete-indice",
+            str(paquete_indice),
+            "--output-dir",
+            str(estado_dir),
+        ],
+        check=True,
+    )
+
+    indice_estado = estado_dir / "indice_estado_actual.json"
+
+    subprocess.run(
+        [
+            "scout",
+            "compactar-estado-actual",
+            "--indice-estado",
+            str(indice_estado),
+            "--output-dir",
+            str(compacto_dir),
+            "--policy",
+            str(policy),
+        ],
+        check=True,
+    )
+
+    input_llm_md = compacto_dir / "04_input_llm_estado_actual_compacto.md"
+    resumen_md = compacto_dir / "01_estado_actual_compacto.md"
+    referencias_json = compacto_dir / "02_referencias_estado_actual.json"
+    resultado_path = output_dir / "resultado_openclaw.json"
+
+    caracteres = len(input_llm_md.read_text(encoding="utf-8")) if input_llm_md.exists() else 0
+
+    resultado = {
+        "ok": True,
+        "tipo": "pjn_local",
+        "indice": str(indice),
+        "raw_dir": str(raw_dir),
+        "output_dir": str(output_dir),
+        "playbook": playbook,
+        "policy": str(policy),
+        "preanalisis_dir": str(preanalisis_dir),
+        "estado_actual_dir": str(estado_dir),
+        "estado_actual_compacto_dir": str(compacto_dir),
+        "input_llm_md": str(input_llm_md),
+        "estado_actual_compacto_md": str(resumen_md),
+        "referencias_json": str(referencias_json),
+        "caracteres_input_llm": caracteres,
+        "tokens_aprox_input_llm": round(caracteres / 4),
+    }
+
+    resultado_path.write_text(
+        json.dumps(resultado, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    typer.echo("Estudio PJN local: ok")
+    typer.echo(f"Resultado OpenClaw: {resultado_path}")
+    typer.echo(f"Input LLM MD: {input_llm_md}")
+    typer.echo(f"Tokens aprox: {round(caracteres / 4)}")
